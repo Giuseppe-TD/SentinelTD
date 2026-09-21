@@ -1,0 +1,37 @@
+# Local configuration and credentials
+.env
+.env.*
+
+
+*.env
+*.pem
+*.key
+*.p12
+*.pfx
+# Runtime data and backups
+data/
+uploads/
+screenshots/
+backups/
+*.db
+*.db-*
+*.sqlite*
+*.sql
+*.dump
+*.backup
+*.bak*
+*.log
+*.zip
+__pycache__/
+*.py[cod]
+.venv/
+node_modules/
+.DS_Store
+Thumbs.db
+
+.git
+.github
+docs
+tests
+
+.language-backups/
