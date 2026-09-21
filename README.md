@@ -52,7 +52,7 @@ It combines website availability monitoring, CMS and extension update tracking, 
 
 The API is exposed on container port `8080` and, by default, on host port `8810` through Docker Compose.
 
-> **CMS connectors:** compatible WordPress/Joomla connectors are required to connect real websites. Connector packages are not bundled in this repository.
+> **CMS connectors:** Sentinel TD uses separate WordPress and Joomla connector packages. The repository is prepared to distribute the official connector ZIP files from [`connectors/`](connectors/). These packages are installed on the target CMS sites; they are not Docker services and are not built into the Sentinel containers.
 
 ## Requirements
 
@@ -68,8 +68,8 @@ The API is exposed on container port `8080` and, by default, on host port `8810`
 Clone the repository and enter the project directory:
 
 ```sh
-git clone Giuseppe-sciarra/SentinelTD
-cd panopticon-lite
+git clone https://github.com/Giuseppe-sciarra/SentinelTD.git
+cd SentinelTD
 ```
 
 Create the environment file:
@@ -122,6 +122,27 @@ http://localhost:8810/healthz
 ```
 
 On a fresh database, sign in as `admin` using the configured `ADMIN_PASSWORD`. The initial password is used to bootstrap the administrator; subsequent password changes are stored in PostgreSQL.
+
+## CMS connectors
+
+Sentinel TD communicates with WordPress and Joomla websites through dedicated connector packages.
+
+The public repository keeps the distributable connector ZIP files in:
+
+```text
+connectors/
+├── README.md
+├── <WordPress connector>.zip
+└── <Joomla connector>.zip
+```
+
+Download the ZIP for the CMS you need and install it with the normal WordPress plugin or Joomla extension installer. Then configure/register the site using the connector itself and the registration details provided by Sentinel TD.
+
+The `connectors/` directory in this GitHub repository is a **source-distribution folder**. It is separate from Sentinel TD's runtime connector archive, which is stored in the Docker `connectors` volume and managed from the Sentinel interface. If you want a connector package to be downloadable from a running Sentinel installation, upload that ZIP from the connector management area as well.
+
+Updating a ZIP file under the repository `connectors/` directory does **not** require rebuilding the Sentinel Docker services. A rebuild is only needed when application source files change.
+
+Before publishing connector packages, review each ZIP to make sure it contains no site-specific tokens, credentials, private URLs or development files.
 
 ## Production setup
 
