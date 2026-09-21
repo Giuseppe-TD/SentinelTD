@@ -251,6 +251,17 @@ See `SECURITY.md` and `docs/ANALYSIS.md` for additional notes.
 - `docs/ANALYSIS.md` — analysis and verification notes.
 - `SECURITY.md` — security information.
 
+## ❤️ Support the project
+
+Sentinel TD is developed and maintained independently.
+
+If you find it useful and would like to support its continued development, you can make a contribution via PayPal.
+
+[**Support Sentinel TD via PayPal**](https://paypal.me/raxiel87)
+
+Every contribution helps with development, testing and maintenance.
+Thank you for supporting the project.
+
 ## Attribution and licensing
 
 Original project attribution: **Giuseppe Sciarra / Tastiere Digitali**.
