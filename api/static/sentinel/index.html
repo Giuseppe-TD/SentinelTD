@@ -1,0 +1,1118 @@
+<!doctype html>
+<html lang="it" data-project="panopticon-lite">
+<head>
+  <meta charset="utf-8">
+  <script src="/static/i18n/catalog.js"></script>
+  <script src="/static/i18n/i18n.js"></script>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sentinel TD</title>
+  <link id="app-favicon" rel="icon" href="/api/branding/favicon">
+  <!-- font e librerie in locale: nessuna dipendenza da CDN esterni -->
+  <link rel="stylesheet" href="/static/vendor/inter.css">
+  <link rel="stylesheet" href="/static/sentinel/sentinel.css">
+  <script src="/static/sentinel/app.js"></script>
+  <script defer src="/static/vendor/alpine.min.js"></script>
+
+  <link rel="stylesheet" href="/static/i18n/i18n.css">
+</head>
+<body x-data="sentinel()" x-cloak>
+
+<!-- ===================== LOGIN ===================== -->
+<template x-if="!token">
+  <div class="login">
+    <div class="box card">
+      <div class="brand"><img class="brand-logo" :src="brand.logo_url" alt="Tastiere Digitali"><div class="brand-app"><div class="name">Sentinel TD</div><div class="by">monitoraggio siti</div></div></div>
+      <template x-if="step==='pwd'">
+        <form @submit.prevent="login()">
+          <div class="field"><label>Utente</label><input class="input" x-model="user" autocomplete="username" autofocus></div>
+          <div class="field"><label>Password</label><input class="input" type="password" x-model="pwd" autocomplete="current-password"></div>
+          <div class="msg err" x-show="err" x-text="err"></div>
+          <button class="btn primary" style="width:100%;justify-content:center" type="submit">Entra</button>
+        </form>
+      </template>
+      <template x-if="step==='2fa'">
+        <div>
+          <p class="mut small">Verifica in due passaggi</p>
+          <template x-if="methods.includes('totp')">
+            <form @submit.prevent="verifyTotp()">
+              <div class="field"><label>Codice authenticator</label><input class="input mono" x-model="code" inputmode="numeric" autofocus placeholder="123456"></div>
+              <button class="btn primary" style="width:100%;justify-content:center" type="submit">Verifica</button>
+            </form>
+          </template>
+          <template x-if="methods.includes('passkey')">
+            <button class="btn" style="width:100%;justify-content:center;margin-top:10px" @click="loginPasskey()">Usa passkey</button>
+          </template>
+          <div class="msg err" x-show="err" x-text="err"></div>
+          <button class="btn ghost sm" style="margin-top:8px" @click="step='pwd';err=''">← indietro</button>
+        </div>
+      </template>
+    </div>
+    <div class="login-foot">Powered by <a href="https://www.tastieredigitali.it" target="_blank" rel="noopener noreferrer"><b>Tastiere Digitali</b></a> — Giuseppe Sciarra</div>
+  </div>
+</template>
+
+<!-- ===================== APP ===================== -->
+<template x-if="token">
+  <div class="app">
+
+    <!-- ---------- SIDEBAR ---------- -->
+    <aside class="sidebar" :class="sideOpen?'open':''">
+      <div class="brand sidebar-brand"><img class="brand-logo" :src="brand.logo_url" alt="Tastiere Digitali"><div class="brand-app"><div class="name">Sentinel TD</div><div class="by">monitoraggio siti</div></div></div>
+      <nav class="nav">
+        <a :class="route.page==='dashboard'?'on':''" href="#/">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+          <span class="txt">Dashboard</span></a>
+        <a :class="route.page==='sites'&&!route.folder?'on':''" href="#/sites">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+          <span class="txt">Tutti i siti</span><span class="cnt" x-text="sites.length"></span></a>
+        <a :class="route.page==='domain-expiries'?'on':''" href="#/domain-expiries">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+          <span class="txt">Scadenze domini</span></a>
+        <a :class="route.page==='component-expiries'?'on':''" href="#/component-expiries">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6v4h4v6h-4v8H9v-8H5V7h4z"/><path d="M9 7h6M9 13h6"/></svg>
+          <span class="txt">Scadenze plugin / temi</span></a>
+        <a :class="route.page==='security'?'on':''" href="#/security">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>
+          <span class="txt">Sicurezza</span>
+          <span class="cnt err" x-show="sec.summary&&sec.summary.critical" x-text="sec.summary?.critical"></span></a>
+        <a :class="route.page==='history'?'on':''" href="#/history">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <span class="txt">Storico 7 giorni</span></a>
+        <a :class="route.page==='stats'?'on':''" href="#/stats">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M7 21V10M12 21V4M17 21v-7"/></svg>
+          <span class="txt">Statistiche</span></a>
+
+        <div class="lbl">Cartelle</div>
+        <template x-for="f in folderTree" :key="f.name">
+          <div>
+            <a :class="route.folder===(f.tag||f.name)?'on':''" :href="'#/folder/'+encodeURIComponent(f.tag||f.name)">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              <span class="txt" x-text="f.name"></span>
+              <span class="cnt err" x-show="f.stats.off" x-text="f.stats.off"></span>
+              <span class="cnt warn" x-show="f.stats.upd" x-text="f.stats.upd"></span>
+              <span class="cnt" x-text="f.stats.count"></span></a>
+            <div class="sub" x-show="f.subs.length">
+              <template x-for="sf in f.subs" :key="sf.tag">
+                <a :class="route.folder===sf.tag?'on':''" :href="'#/folder/'+encodeURIComponent(sf.tag)">
+                  <span class="txt" x-text="sf.name"></span>
+                  <span class="cnt warn" x-show="f.subStats[sf.name].upd" x-text="f.subStats[sf.name].upd"></span>
+                  <span class="cnt" x-text="f.subStats[sf.name].count"></span></a>
+              </template>
+            </div>
+          </div>
+        </template>
+        <a x-show="noFolder.length" :class="route.folder==='__none'?'on':''" href="#/folder/__none">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          <span class="txt">Senza cartella</span><span class="cnt" x-text="noFolder.length"></span></a>
+
+        <div class="lbl">Sistema</div>
+        <a :class="route.page==='notifications'?'on':''" href="#/notifications">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          <span class="txt">Notifiche</span></a>
+        <a :class="route.page==='reports'?'on':''" href="#/reports">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
+          <span class="txt">Report mensile</span></a>
+        <a :class="route.page==='account'?'on':''" href="#/account">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+          <span class="txt">Account</span></a>
+        <a :class="route.page==='settings'?'on':''" href="#/settings">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+          <span class="txt">Impostazioni</span></a>
+      </nav>
+      <div class="foot">
+        <div><span x-text="meta.name"></span> <span class="ver" x-show="meta.version" x-text="'v'+meta.version"></span></div>
+        <div><span x-text="sites.length"></span> siti monitorati · <a href="#" @click.prevent="logout()">Esci</a></div>
+        <div class="by">Powered by <a :href="meta.vendor_url" target="_blank" rel="noopener noreferrer"><b x-text="meta.vendor"></b></a> — <span x-text="meta.author"></span></div>
+      </div>
+    </aside>
+    <div class="overlay" x-show="sideOpen" @click="sideOpen=false" style="z-index:44"></div>
+
+    <!-- ---------- MAIN ---------- -->
+    <div class="main">
+      <header class="topbar">
+        <button class="btn icon ghost hamb" @click="sideOpen=!sideOpen"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+        <div class="search" style="width:min(360px,100%)" x-show="route.page==='sites'||route.page==='dashboard'">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input class="input" placeholder="Cerca sito, url, cartella…" x-model="q" @keydown.enter="if(route.page!=='sites') go('sites')">
+        </div>
+        <div class="sp"></div>
+        <span class="spinner" x-show="loading"></span>
+        <button class="btn sm" @click="checkAll()">Check tutti</button>
+        <button class="btn sm primary" @click="updateAll()">Aggiorna tutto</button>
+        <button class="btn sm" @click="openNew()">+ Sito</button>
+      </header>
+
+      <main class="content">
+        <div class="msg info" x-show="needs2faSetup">Non hai ancora configurato la verifica in due passaggi: <a href="#/settings">configurala nelle Impostazioni</a>.</div>
+
+        <!-- ===== DASHBOARD ===== -->
+        <template x-if="route.page==='dashboard'">
+          <div>
+            <h1 class="page-title">Dashboard</h1>
+            <div class="page-sub">Stato del parco in tempo reale</div>
+            <div class="grid kpi" style="margin:18px 0">
+              <div class="card kpi ok" @click="flt='all';go('sites')"><div class="k">Siti OK</div><div class="v" x-text="totStats.count-totStats.off"></div><div class="d"><span x-text="totStats.wp"></span> WordPress · <span x-text="totStats.joomla"></span> Joomla</div></div>
+              <div class="card kpi warn" @click="flt='upd';go('sites')"><div class="k">Con update</div><div class="v" x-text="totStats.upd"></div><div class="d">siti con aggiornamenti pendenti</div></div>
+              <div class="card kpi err" @click="flt='off';go('sites')"><div class="k">Offline</div><div class="v" x-text="totStats.off"></div><div class="d">non raggiungibili all'ultimo check</div></div>
+              <div class="card kpi acc" @click="go('history')"><div class="k">Update 7 giorni</div><div class="v" x-text="histSummary?histSummary.ok:'—'"></div><div class="d"><span x-text="histSummary?histSummary.failed:0"></span> falliti</div></div>
+            </div>
+            <div class="grid two">
+              <div class="card">
+                <h3>Aggiornamenti ultimi 7 giorni</h3>
+                <div class="bars" x-show="histSummary">
+                  <template x-for="d in (histSummary?histSummary.days:[])" :key="d.day">
+                    <div class="b" :title="d.day+': '+d.ok+' ok, '+d.failed+' falliti'">
+                      <div class="bv" x-show="d.ok+d.failed" x-text="d.ok+d.failed"></div>
+                      <div class="seg failed" :style="'height:'+barH(d,'failed')"></div>
+                      <div class="seg ok" :style="'height:'+barH(d,'ok')"></div>
+                      <div class="lb" x-text="dayLbl(d.day)"></div>
+                    </div>
+                  </template>
+                </div>
+                <h3 style="margin-top:22px">Attività recente</h3>
+                <div class="timeline">
+                  <template x-for="h in history.slice(0,10)" :key="h.id">
+                    <div class="ev">
+                      <span class="dot" :class="h.ok?'ok':'err'" style="margin-top:6px"></span>
+                      <div><b x-text="h.site_name"></b> · <span x-text="h.name"></span> <span class="mut mono small" x-text="h.from+' → '+h.to"></span><div class="err small" x-show="!h.ok" x-text="h.error"></div></div>
+                      <div class="when" x-text="ago(h.at)"></div>
+                    </div>
+                  </template>
+                  <div class="empty" x-show="!history.length">Nessun update negli ultimi 7 giorni</div>
+                </div>
+              </div>
+              <div class="card">
+                <h3>Da tenere d'occhio</h3>
+                <div class="timeline">
+                  <template x-for="(a,i) in attention" :key="i">
+                    <div class="ev" style="grid-template-columns:18px 1fr">
+                      <span class="dot" :class="a.kind" style="margin-top:6px"></span>
+                      <div>
+                        <a x-show="a.site" :href="'#/site/'+(a.site&&a.site.id)" x-text="a.site&&a.site.name"></a>
+                        <a x-show="a.link" :href="'#/'+a.link">Centro sicurezza</a>
+                        <div class="small" x-text="a.text"></div>
+                      </div>
+                    </div>
+                  </template>
+                  <div class="empty" x-show="!attention.length">Tutto tranquillo ✨</div>
+                </div>
+                <h3 style="margin-top:22px">Cartelle</h3>
+                <template x-for="f in folderTree" :key="f.name">
+                  <a class="row" style="padding:8px 0;border-bottom:1px solid var(--bd);color:inherit" :href="'#/folder/'+encodeURIComponent(f.tag||f.name)">
+                    <span style="flex:1;font-weight:500" x-text="f.name"></span>
+                    <span class="badge warn" x-show="f.stats.upd" x-text="f.stats.upd+' update'"></span>
+                    <span class="badge err" x-show="f.stats.off" x-text="f.stats.off+' offline'"></span>
+                    <span class="badge" x-text="f.stats.count+' siti'"></span>
+                  </a>
+                </template>
+              </div>
+            </div>
+
+            <div class="card" style="margin-top:16px">
+              <div class="row"><div style="flex:1"><b>Statistiche aggiornamenti</b><div class="small mut">Andamento mensile, classifiche dei siti e confronto fra periodi.</div></div>
+              <a class="btn sm" href="#/stats">Apri statistiche →</a></div>
+            </div>
+          </div>
+        </template>
+
+        <!-- ===== STATISTICHE ===== -->
+        <template x-if="route.page==='stats'">
+          <div>
+            <div class="row" style="flex-wrap:wrap"><div><h1 class="page-title">Statistiche aggiornamenti</h1><div class="page-sub">Andamento mensile, classifiche e confronto fra periodi — su tutto lo storico disponibile</div></div></div>
+            <div style="margin-top:16px">
+<div class="card" style="margin-top:16px" x-show="stats.data">
+              <div class="row" style="flex-wrap:wrap;gap:10px">
+                <div class="seg">
+                  <button :class="stats.mode==='month'?'on':''" @click="stats.mode='month'">Un mese</button>
+                  <button :class="stats.mode==='compare'?'on':''" @click="stats.mode='compare';loadCompare()">Confronta due mesi</button>
+                </div>
+                <span class="spinner" x-show="stats.busy"></span>
+                <div class="sp"></div>
+                <span class="small mut">Perimetro</span>
+                <select class="input" style="max-width:210px" x-model="stats.scope" @change="loadStats(false)">
+                  <template x-for="s in stats.scopes" :key="'sc'+s.key"><option :value="s.key" x-text="s.label"></option></template>
+                </select>
+                <button class="btn" @click="openTokenLink(() => statsPdfUrl())" title="Scarica in PDF quello che vedi: mese selezionato o confronto">⬇ Scarica PDF</button>
+              </div>
+
+              <!-- ANDAMENTO -->
+              <div class="row" style="margin-top:16px;flex-wrap:wrap;gap:10px">
+                <div style="flex:1;min-width:220px">
+                  <b style="font-size:13px">Andamento</b>
+                  <div class="small mut">Aggiornamenti applicati per mese — <b>clicca una barra</b> per vedere il dettaglio di quel mese</div>
+                </div>
+                <select class="input small" style="max-width:120px" x-model.number="stats.months" @change="loadStats(false)">
+                  <option value="6">6 mesi</option><option value="12">12 mesi</option><option value="24">24 mesi</option>
+                </select>
+              </div>
+              <div class="bars" style="height:150px;margin-top:10px" x-show="!statEmptyWindow">
+                <template x-for="m in (stats.trend?stats.trend.months:[])" :key="'t'+m.period">
+                  <div class="b" style="cursor:pointer" :class="m.period===stats.period?'sel':''"
+                       :title="m.label+': '+m.updates+' aggiornamenti · '+m.sites+' siti · '+m.failed+' falliti'"
+                       @click="pickMonth(m.period)">
+                    <div class="bv" x-show="m.updates" x-text="m.updates"></div>
+                    <div class="seg ok" :style="'height:'+statTrendH(m)+';opacity:'+(m.period===stats.period?1:.55)"></div>
+                    <div class="lb" x-text="shortMonth(m.label)"></div>
+                  </div>
+                </template>
+              </div>
+              <div class="empty" x-show="statEmptyWindow" style="padding:28px">Nessun aggiornamento registrato negli ultimi <span x-text="stats.months"></span> mesi in questo perimetro.</div>
+
+              <!-- MODALITÀ MESE -->
+              <template x-if="stats.mode==='month' && stats.data">
+                <div>
+                  <div class="row" style="margin:20px 0 4px;flex-wrap:wrap;gap:10px;border-top:1px solid var(--bd);padding-top:16px">
+                    <div style="flex:1;min-width:200px"><b style="font-size:15px" x-text="stats.data.period_label"></b>
+                      <div class="small mut">Dettaglio del mese selezionato · confronto con <span x-text="stats.data.prev_label"></span></div></div>
+                    <div class="row" style="gap:4px">
+                      <button class="btn icon" :disabled="!canShiftStat(-1)" @click="shiftStatMonth(-1)" title="Mese precedente (freccia ←)">‹</button>
+                      <select class="input" style="max-width:190px" x-model="stats.period" @change="pickMonth(stats.period)">
+                        <template x-for="m in statMonths" :key="'pp'+m.period"><option :value="m.period" x-text="m.label+(m.updates?' — '+m.updates+' update':'')"></option></template>
+                      </select>
+                      <button class="btn icon" :disabled="!canShiftStat(1)" @click="shiftStatMonth(1)" title="Mese successivo (freccia →)">›</button>
+                    </div>
+                  </div>
+                  <div class="grid kpi" style="margin:10px 0 6px">
+                    <div class="card kpi acc"><div class="k">Aggiornamenti</div><div class="v" x-text="stats.data.totals.updates"></div>
+                      <div class="d"><span :class="statDelta(stats.data.totals.updates,stats.data.prev_totals.updates).cls" x-text="statDelta(stats.data.totals.updates,stats.data.prev_totals.updates).txt"></span> vs <span x-text="stats.data.prev_label"></span></div></div>
+                    <div class="card kpi ok"><div class="k">Siti aggiornati</div><div class="v" x-text="stats.data.totals.sites"></div>
+                      <div class="d"><span :class="statDelta(stats.data.totals.sites,stats.data.prev_totals.sites).cls" x-text="statDelta(stats.data.totals.sites,stats.data.prev_totals.sites).txt"></span></div></div>
+                    <div class="card kpi"><div class="k">Componenti diversi</div><div class="v" x-text="stats.data.totals.components"></div>
+                      <div class="d"><span :class="statDelta(stats.data.totals.components,stats.data.prev_totals.components).cls" x-text="statDelta(stats.data.totals.components,stats.data.prev_totals.components).txt"></span></div></div>
+                    <div class="card kpi err"><div class="k">Non riusciti</div><div class="v" x-text="stats.data.totals.failed"></div>
+                      <div class="d"><span :class="statDeltaFail(stats.data.totals.failed,stats.data.prev_totals.failed).cls" x-text="statDeltaFail(stats.data.totals.failed,stats.data.prev_totals.failed).txt"></span></div></div>
+                  </div>
+
+                  <div class="grid two" style="margin-top:14px">
+                    <div>
+                      <h3>Siti più aggiornati — <span x-text="stats.data.period_label"></span></h3>
+                      <template x-for="(s, si) in stats.data.top_sites" :key="'ts'+s.site_id">
+                        <a class="statrow" :href="'#/site/'+s.site_id">
+                          <div class="nm"><span class="cdot" :style="'background:'+colorIdx(si)"></span><span class="cms" :class="s.cms" x-text="s.cms==='wp'?'WP':'J'"></span> <span x-text="s.name"></span></div>
+                          <div class="bar"><div class="fill" :style="'width:'+statBar(s.updates, stats.data.max_site)+';background:'+colorGradIdx(si)"></div></div>
+                          <div class="val"><b x-text="s.updates"></b>
+                            <span class="small" :class="s.delta>0?'ok':(s.delta<0?'err':'mut')" x-text="(s.delta>0?'+':'')+s.delta"></span>
+                            <span class="badge err" x-show="s.failed" x-text="s.failed+' ko'"></span></div>
+                        </a>
+                      </template>
+                      <div class="empty" x-show="!stats.data.top_sites.length">Nessun aggiornamento registrato in <span x-text="stats.data.period_label"></span></div>
+                    </div>
+                    <div>
+                      <h3>Componenti più aggiornati</h3>
+                      <template x-for="(c, ci) in stats.data.top_components" :key="'tc'+c.name">
+                        <div class="statrow">
+                          <div class="nm"><span class="cdot" :style="'background:'+colorIdx(ci)"></span><span x-text="c.name"></span> <span class="badge" x-text="c.type"></span></div>
+                          <div class="bar"><div class="fill" :style="'width:'+statBar(c.count, stats.data.max_component)+';background:'+colorGradIdx(ci)"></div></div>
+                          <div class="val"><b x-text="c.count"></b> <span class="small mut" x-text="'su '+c.sites"></span></div>
+                        </div>
+                      </template>
+                      <div class="empty" x-show="!stats.data.top_components.length">Nessun componente aggiornato in questo mese</div>
+                    </div>
+                  </div>
+                </div>
+              </template>
+
+              <!-- MODALITÀ CONFRONTO -->
+              <template x-if="stats.mode==='compare'">
+                <div style="margin-top:16px">
+                  <div class="row" style="flex-wrap:wrap;gap:8px">
+                    <span class="small mut">Confronta</span>
+                    <select class="input" style="max-width:170px" x-model="stats.cmpA" @change="loadCompare()">
+                      <template x-for="p in stats.periods" :key="'ca'+p.period"><option :value="p.period" x-text="p.label"></option></template>
+                    </select>
+                    <span class="small mut">con</span>
+                    <select class="input" style="max-width:170px" x-model="stats.cmpB" @change="loadCompare()">
+                      <template x-for="p in stats.periods" :key="'cb'+p.period"><option :value="p.period" x-text="p.label"></option></template>
+                    </select>
+                  </div>
+                  <template x-if="stats.cmp">
+                    <div>
+                      <div class="grid kpi" style="margin:16px 0">
+                        <div class="card kpi"><div class="k" x-text="stats.cmp.a.label"></div><div class="v" x-text="stats.cmp.a.updates"></div><div class="d"><span x-text="stats.cmp.a.sites"></span> siti · <span x-text="stats.cmp.a.components"></span> componenti</div></div>
+                        <div class="card kpi acc"><div class="k" x-text="stats.cmp.b.label"></div><div class="v" x-text="stats.cmp.b.updates"></div><div class="d"><span x-text="stats.cmp.b.sites"></span> siti · <span x-text="stats.cmp.b.components"></span> componenti</div></div>
+                        <div class="card kpi"><div class="k">Variazione</div>
+                          <div class="v" :class="statDelta(stats.cmp.b.updates,stats.cmp.a.updates).cls" x-text="statDelta(stats.cmp.b.updates,stats.cmp.a.updates).txt"></div>
+                          <div class="d">aggiornamenti totali</div></div>
+                        <div class="card kpi err"><div class="k">Non riusciti</div><div class="v" x-text="stats.cmp.b.failed"></div><div class="d">erano <span x-text="stats.cmp.a.failed"></span></div></div>
+                      </div>
+                      <div class="tbl-wrap">
+                        <table class="tbl responsive">
+                          <thead><tr><th>Sito</th><th class="n" x-text="stats.cmp.a.label"></th><th class="n" x-text="stats.cmp.b.label"></th><th class="n">Variazione</th><th></th></tr></thead>
+                          <tbody>
+                            <template x-for="(r, ri) in stats.cmp.sites" :key="'cs'+r.site_id">
+                              <tr class="row" @click="go('site/'+r.site_id)">
+                                <td><span class="cdot" :style="'background:'+colorIdx(ri)"></span><span class="cms" :class="r.cms" x-text="r.cms==='wp'?'WP':'J'"></span> <span x-text="r.name"></span></td>
+                                <td class="num" x-text="r.a"></td>
+                                <td class="num"><b x-text="r.b"></b></td>
+                                <td class="num"><span :class="r.delta>0?'ok':(r.delta<0?'err':'mut')" x-text="(r.delta>0?'+':'')+r.delta+(r.pct===null?'':' ('+(r.delta>0?'+':'')+r.pct+'%)')"></span></td>
+                                <td class="hide-m" style="width:120px"><div class="bar" style="margin:0"><div class="fill" :style="'width:'+statBar(r.b, stats.cmp.max)+';background:'+colorGradIdx(ri)"></div></div></td>
+                              </tr>
+                            </template>
+                          </tbody>
+                        </table>
+                        <div class="empty" x-show="!stats.cmp.sites.length">Nessun dato nei due mesi scelti</div>
+                      </div>
+                      <h3 style="margin-top:18px">Componenti — differenze</h3>
+                      <div class="tbl-wrap">
+                        <table class="tbl responsive">
+                          <thead><tr><th>Componente</th><th class="n" x-text="stats.cmp.a.label"></th><th class="n" x-text="stats.cmp.b.label"></th><th class="n">Variazione</th></tr></thead>
+                          <tbody>
+                            <template x-for="(c, cci) in stats.cmp.components" :key="'cc'+c.name">
+                              <tr><td><span class="cdot" :style="'background:'+colorIdx(cci)"></span><span x-text="c.name"></span></td><td class="num" x-text="c.a"></td><td class="num"><b x-text="c.b"></b></td>
+                                <td class="num"><span :class="c.delta>0?'ok':(c.delta<0?'err':'mut')" x-text="(c.delta>0?'+':'')+c.delta"></span></td></tr>
+                            </template>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </template>
+            </div>
+            </div>
+            <div class="empty" x-show="!stats.data&&!stats.busy">Ancora nessun dato: le statistiche si popolano con i cicli di aggiornamento.</div>
+          </div>
+        </template>
+
+        <!-- ===== SITES (tutti / cartella) ===== -->
+        <template x-if="route.page==='sites'">
+          <div>
+            <div class="row" style="margin-bottom:6px;flex-wrap:wrap">
+              <div><h1 class="page-title" x-text="pageTitle"></h1><div class="page-sub"><span x-text="pageStats.count"></span> siti · <span x-text="pageStats.upd"></span> con update · <span x-text="pageStats.off"></span> offline</div></div>
+              <div class="sp"></div>
+              <button class="btn sm" :class="selMode?'primary':''" @click="selMode=!selMode;selIds=[]" x-text="selMode?'✕ Esci selezione':'☑ Seleziona'"></button>
+              <button class="btn sm" @click="openInstall('install')">Installa</button>
+              <button class="btn sm" @click="openInstall('remove')">Rimuovi</button>
+              <button class="btn sm" @click="exportCsv()">Esporta CSV</button>
+            </div>
+            <div class="toolbar">
+              <div class="chips">
+                <span class="fchip" :class="flt==='all'?'on':''" @click="flt='all'">Tutti <span class="n" x-text="pageSites.length"></span></span>
+                <span class="fchip" :class="flt==='upd'?'on':''" @click="flt='upd'">Con update <span class="n" x-text="pageStats.upd"></span></span>
+                <span class="fchip" :class="flt==='off'?'on':''" @click="flt='off'">Offline <span class="n" x-text="pageStats.off"></span></span>
+                <span class="fchip" :class="flt==='wp'?'on':''" @click="flt='wp'">WordPress <span class="n" x-text="pageSites.filter(s=>s.cms==='wp').length"></span></span>
+                <span class="fchip" :class="flt==='joomla'?'on':''" @click="flt='joomla'">Joomla <span class="n" x-text="pageSites.filter(s=>s.cms==='joomla').length"></span></span>
+              </div>
+            </div>
+            <div class="tbl-wrap">
+              <table class="tbl responsive">
+                <thead><tr>
+                  <th x-show="selMode" style="width:36px"><input type="checkbox" :checked="filtered.length&&filtered.every(s=>selIds.includes(s.id))" @change="selAll()"></th>
+                  <th class="sort" @click="sortBy('status')" style="width:36px"></th>
+                  <th class="sort" @click="sortBy('name')">Sito</th>
+                  <th>Cartelle</th>
+                  <th class="sort" @click="sortBy('core_current')">CMS / core</th>
+                  <th>PHP</th>
+                  <th>Dominio</th>
+                  <th class="sort" @click="sortBy('updates')">Update</th>
+                  <th class="sort" @click="sortBy('checked')">Check</th>
+                  <th></th>
+                </tr></thead>
+                <tbody>
+                  <template x-for="s in filtered" :key="s.id">
+                    <tr class="row" :class="selIds.includes(s.id)?'selected':''" @click="selMode?toggleSel(s.id):go('site/'+s.id)">
+                      <td x-show="selMode" @click.stop><input type="checkbox" :checked="selIds.includes(s.id)" @change="toggleSel(s.id)"></td>
+                      <td><span class="dot" :class="isOff(s)?'err':(hasUpd(s)?'warn':'ok')" :title="isOff(s)?(s.error||'offline'):(hasUpd(s)?'update disponibili':'ok')"></span></td>
+                      <td><div class="site-cell">
+                        <span class="site-thumb" :title="s.shot_at ? 'Anteprima di '+ago(s.shot_at) : 'Anteprima non ancora disponibile'">
+                          <img x-show="s.shot_path" :src="thumbUrl(s)" loading="lazy" alt="" @error="$event.target.style.visibility='hidden'">
+                          <span class="ini" x-show="!s.shot_path" x-text="initials(s.name)"></span>
+                        </span>
+                        <span style="min-width:0">
+                          <span class="name" x-text="s.name"></span>
+                          <span class="url" x-text="s.url.replace(/^https?:\/\//,'')"></span>
+                          <span class="badge" x-show="s.notifications_silenced">🔕 silenziato</span>
+                        </span>
+                      </div></td>
+                      <td class="hide-m"><template x-for="t in siteTags(s)" :key="t"><button type="button" class="chip click-chip" @click.stop="go('folder/'+encodeURIComponent(t))" x-text="t" title="Apri cartella"></button></template><span class="mut small" x-show="!siteTags(s).length">—</span></td>
+                      <td><span class="cms" :class="s.cms" x-text="s.cms==='wp'?'WP':'JOOMLA'"></span> <span class="mono small" x-text="coreLabel(s)"></span> <span class="badge warn" x-show="s.core_update" x-text="'→ '+s.core_latest"></span></td>
+                      <td class="hide-m"><span class="mono small" x-text="s.php_version||'—'"></span> <span class="badge" :class="phpState(s.php_version).cls" x-show="phpState(s.php_version).label" x-text="phpState(s.php_version).label"></span></td>
+                      <td class="hide-m"><span class="badge" :class="expiryClass(s.domain_expires_at)" x-show="s.domain_expires_at" x-text="expiryText(s.domain_expires_at)"></span><span class="mut small" x-show="!s.domain_expires_at">—</span></td>
+                      <td class="num"><span class="badge warn" x-show="hasUpd(s)" x-text="s.updates_count"></span><span class="badge ok" x-show="!hasUpd(s)&&!isOff(s)">ok</span><span class="badge err" x-show="isOff(s)">offline</span></td>
+                      <td class="hide-m mut small" x-text="ago(s.last_checked)"></td>
+                      <td @click.stop><div class="acts">
+                        <button class="btn sm icon" title="Check" @click="check(s)" :disabled="busy[s.id]"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7M21 3v6h-6"/></svg></button>
+                        <button class="btn sm icon" title="Aggiorna ora" @click="updateNow(s)" x-show="hasUpd(s)"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M6 9l6-6 6 6M4 21h16"/></svg></button>
+                        <button class="btn sm icon" title="Apri admin" @click="goAdmin(s)"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 4h6v6M20 4l-9 9M9 6H5a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-4"/></svg></button>
+                      </div></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+              <div class="empty" x-show="!filtered.length">Nessun sito corrisponde ai filtri</div>
+            </div>
+            <div class="selbar" x-show="selMode&&selIds.length">
+              <b x-text="selIds.length+' selezionati'"></b>
+              <button class="btn sm primary" @click="updateSelected()">Aggiorna ora</button>
+              <button class="btn sm" @click="openTags()">Cartelle ±</button>
+              <button class="btn sm" @click="shootBulk(true)" title="Rigenera l'anteprima dei siti selezionati">🖼 Anteprime</button>
+              <button class="btn sm" @click="setAutoSelected(true)">Auto-update ON</button>
+              <button class="btn sm" @click="setAutoSelected(false)">Auto-update OFF</button>
+              <div class="sp"></div>
+              <button class="btn sm ghost" @click="exitSel()">Annulla</button>
+            </div>
+          </div>
+        </template>
+
+        <!-- ===== SITE DETAIL ===== -->
+        <template x-if="route.page==='site'&&detail">
+          <div>
+            <a href="#/sites" class="small mut">← siti</a>
+            <div class="row" style="margin:6px 0 14px;flex-wrap:wrap">
+              <span class="dot" :class="isOff(detail)?'err':(hasUpd(detail)?'warn':'ok')" style="width:12px;height:12px"></span>
+              <div><h1 class="page-title" x-text="detail.name"></h1><div class="page-sub"><a :href="detail.url" target="_blank" x-text="detail.url"></a></div></div>
+              <div class="sp"></div>
+              <button class="btn sm" @click="check(detail)" :disabled="busy[detail.id]"><span class="spinner" x-show="busy[detail.id]"></span> Check ora</button>
+              <button class="btn sm primary" @click="updateNow(detail)" x-show="hasUpd(detail)">Aggiorna tutto</button>
+              <button class="btn sm" @click="goAdmin(detail)">Apri admin ↗</button>
+              <button class="btn sm" :class="detail.notifications_silenced?'danger':''" @click="toggleSilence(detail)" x-text="detail.notifications_silenced?'🔕 Riattiva notifiche':'🔔 Silenzia'"></button>
+              <button class="btn sm" @click="openEdit(detail)">Modifica</button>
+            </div>
+            <div class="tabs">
+              <button :class="route.tab==='overview'?'on':''" @click="go('site/'+detail.id)">Panoramica</button>
+              <button :class="route.tab==='ext'?'on':''" @click="go('site/'+detail.id+'/ext')">Estensioni <span class="badge warn" x-show="detail.updates_count" x-text="detail.updates_count"></span></button>
+              <button :class="route.tab==='history'?'on':''" @click="go('site/'+detail.id+'/history')">Storico</button>
+            </div>
+
+            <template x-if="route.tab==='overview'">
+              <div class="grid two site-tab">
+                <div class="card">
+                  <h3>Stato</h3>
+                  <div class="msg err" x-show="isOff(detail)" x-text="'Offline: '+(detail.error||detail.status)"></div>
+                  <div class="kv">
+                    <div class="k">CMS</div><div><span class="cms" :class="detail.cms" x-text="detail.cms==='wp'?'WP':'JOOMLA'"></span> <span class="mono" x-text="detail.core_current"></span> <span class="badge warn" x-show="detail.core_update" x-text="'disponibile '+detail.core_latest"></span></div>
+                    <div class="k">PHP</div><div><span class="mono" x-text="detail.php_version||'—'"></span> <span class="badge" :class="phpState(detail.php_version).cls" x-show="phpState(detail.php_version).label" x-text="phpState(detail.php_version).label"></span></div>
+                    <div class="k">Dominio</div><div><span x-text="detail.domain_name||'—'"></span> <span class="badge" :class="expiryClass(detail.domain_expires_at)" x-show="detail.domain_expires_at" x-text="expiryText(detail.domain_expires_at)"></span></div>
+                    <div class="k">Notifiche</div><div><span class="badge" :class="detail.notifications_silenced?'warn':'ok'" x-text="detail.notifications_silenced?'silenziate':'attive'"></span></div>
+                    <div class="k">Ultimo check</div><div x-text="fmtDate(detail.last_checked)"></div>
+                    <div class="k">Plugin</div><div><span x-text="detail.tot_plugins"></span> installati · <span :class="detail.upd_plugins?'warn':''" x-text="detail.upd_plugins+' da aggiornare'"></span></div>
+                    <div class="k">Temi</div><div><span x-text="detail.tot_themes"></span> installati · <span x-text="detail.upd_themes+' da aggiornare'"></span></div>
+                    <div class="k">Altro</div><div><span x-text="detail.tot_other"></span> · <span x-text="detail.upd_other+' da aggiornare'"></span></div>
+                    <div class="k">Auto-update</div><div><span class="badge" :class="detail.auto_update?'ok':''" x-text="detail.auto_update?'attivo':'manuale'"></span></div>
+                    <div class="k">Cartelle</div><div><template x-for="t in siteTags(detail)" :key="t"><span class="chip" x-text="t"></span></template><span class="mut" x-show="!siteTags(detail).length">—</span></div>
+                  </div>
+                </div>
+                <div>
+                <div class="card" style="margin-bottom:16px">
+                  <div class="row" style="margin-bottom:10px">
+                    <h3 style="margin:0;flex:1">Anteprima</h3>
+                    <span class="small mut" x-show="detail.shot_at" x-text="ago(detail.shot_at)"></span>
+                    <button class="btn sm ghost" @click="shootNow(detail)" :disabled="busy['shot'+detail.id]">
+                      <span class="spinner" x-show="busy['shot'+detail.id]"></span> ⟳ Aggiorna
+                    </button>
+                  </div>
+                  <a :href="detail.url" target="_blank" x-show="detail.shot_path" class="shot-wrap">
+                    <img :src="shotUrl(detail)" :alt="'Anteprima '+detail.name" loading="lazy" @error="onShotError(detail, $event.target)">
+                  </a>
+                  <div class="empty" x-show="!detail.shot_path" style="padding:34px">
+                    Nessuna anteprima ancora: premi <b>⟳ Aggiorna</b> per catturarla.
+                  </div>
+                </div>
+                <div class="card">
+                  <h3>Ultimi eventi</h3>
+                  <div class="timeline">
+                    <template x-for="h in siteHistory.slice(0,8)" :key="h.id">
+                      <div class="ev"><span class="dot" :class="h.ok?'ok':'err'" style="margin-top:6px"></span><div><span x-text="h.name"></span> <span class="mono small mut" x-text="h.from+' → '+h.to"></span><div class="err small" x-show="!h.ok" x-text="h.error"></div></div><div class="when" x-text="ago(h.at)"></div></div>
+                    </template>
+                    <div class="empty" x-show="!siteHistory.length">Nessun update negli ultimi 7 giorni</div>
+                  </div>
+                </div>
+                </div>
+              </div>
+            </template>
+
+            <template x-if="route.tab==='ext'">
+              <div class="tbl-wrap site-tab">
+                <table class="tbl">
+                  <thead><tr><th>Estensione</th><th>Tipo</th><th>Installata</th><th>Disponibile</th><th>Stato</th></tr></thead>
+                  <tbody>
+                    <template x-for="e in [...detail.extensions].sort((a,b)=>(b.update_available-a.update_available)||a.name.localeCompare(b.name))" :key="e.type+e.slug">
+                      <tr><td><div class="name" x-text="e.name"></div><div class="url mono" x-text="e.slug"></div></td><td><span class="badge" x-text="e.type"></span></td><td class="mono" x-text="e.current_version||'—'"></td><td class="mono" x-text="e.update_available?e.new_version:'—'"></td><td><span class="badge" :class="e.update_available?'warn':'ok'" x-text="e.update_available?'update':'ok'"></span></td></tr>
+                    </template>
+                  </tbody>
+                </table>
+                <div class="empty" x-show="!detail.extensions.length">Nessuna estensione censita: fai un check</div>
+              </div>
+            </template>
+
+            <template x-if="route.tab==='history'">
+              <div class="card site-tab"><div class="timeline">
+                <template x-for="h in siteHistory" :key="h.id">
+                  <div class="ev"><span class="dot" :class="h.ok?'ok':'err'" style="margin-top:6px"></span><div><b x-text="h.name"></b> <span class="badge" x-text="h.type"></span> <span class="mono small mut" x-text="h.from+' → '+h.to"></span><div class="err small" x-show="!h.ok" x-text="h.error"></div></div><div class="when" x-text="fmtDate(h.at)"></div></div>
+                </template>
+                <div class="empty" x-show="!siteHistory.length">Nessun update negli ultimi 7 giorni</div>
+              </div></div>
+            </template>
+
+            <div class="card" style="margin-top:16px;border-color:rgba(255,93,108,.25)">
+              <div class="row"><div><b>Rimuovi da Sentinel</b><div class="small mut">Il sito non viene toccato: smette solo di essere monitorato.</div></div><div class="sp"></div><button class="btn sm danger" @click="delSite(detail)">Elimina</button></div>
+            </div>
+          </div>
+        </template>
+
+        <!-- ===== SCADENZE DOMINI ===== -->
+        <template x-if="route.page==='domain-expiries'">
+          <div>
+            <div class="row" style="flex-wrap:wrap"><div><h1 class="page-title">Scadenze domini</h1><div class="page-sub">Scansione automatica dei domini principali registrabili. I sottodomini vengono ricondotti al dominio padre.</div></div><div class="sp"></div><span class="spinner" x-show="exp.loadingDomains"></span><button class="btn sm" @click="scanDomains()">Controlla domini ora</button></div>
+            <div class="grid kpi" style="margin:18px 0">
+              <div class="card kpi acc"><div class="k">Domini censiti</div><div class="v" x-text="exp.domains.length"></div></div>
+              <div class="card kpi ok"><div class="k">Scadenza rilevata</div><div class="v" x-text="exp.domains.filter(x=>x.expires_at).length"></div></div>
+              <div class="card kpi warn"><div class="k" x-text="'Entro '+prefs.expiry_warning_days+' giorni'"></div><div class="v" x-text="exp.domains.filter(x=>x.days!==null&&x.days>=0&&x.days<=prefs.expiry_warning_days).length"></div></div>
+              <div class="card kpi err"><div class="k">Scaduti</div><div class="v" x-text="exp.domains.filter(x=>x.days!==null&&x.days<0).length"></div></div>
+            </div>
+            <div class="tbl-wrap"><table class="tbl responsive"><thead><tr><th>Dominio principale</th><th>Sito / siti monitorati</th><th>Data scadenza</th><th>Tempo residuo</th><th>Ultimo controllo</th><th>Stato scansione</th></tr></thead><tbody>
+              <template x-for="x in exp.domains" :key="x.id"><tr><td><b class="mono" x-text="x.name"></b></td><td><div class="name" x-text="x.site_names?.join(', ')"></div><div class="small mut" x-show="x.site_count>1" x-text="x.site_count+' siti sullo stesso dominio'"></div></td><td><b x-text="x.expires_at?fmtDay(x.expires_at):'Non disponibile'"></b></td><td><span x-show="x.days!==null" class="badge" :class="expiryDaysClass(x.days)" x-text="expiryDaysText(x.days)"></span><span x-show="x.days===null" class="mut">—</span></td><td class="small" x-text="fmtDate(x.checked_at)"></td><td><span class="small mut" x-show="!x.error&&x.expires_at">OK</span><span class="small warn" x-show="x.error" x-text="x.error"></span><span class="small mut" x-show="!x.error&&!x.expires_at">Da scansionare</span></td></tr></template>
+            </tbody></table><div class="empty" x-show="!exp.loadingDomains&&!exp.domains.length">Nessun dominio censito.</div></div>
+          </div>
+        </template>
+
+        <!-- ===== SCADENZE PLUGIN / TEMI ===== -->
+        <template x-if="route.page==='component-expiries'">
+          <div>
+            <div class="row" style="flex-wrap:wrap"><div><h1 class="page-title">Scadenze plugin / temi</h1><div class="page-sub">Registro globale delle licenze. Non sono associate a un singolo sito: indichi solo se valgono per WordPress, Joomla o entrambi.</div></div><div class="sp"></div><span class="spinner" x-show="exp.loadingComponents"></span><button class="btn sm primary" @click="newExpiry()">+ Plugin / tema / licenza</button></div>
+            <div class="grid kpi" style="margin:18px 0">
+              <div class="card kpi acc"><div class="k">Licenze registrate</div><div class="v" x-text="exp.components.length"></div></div>
+              <div class="card kpi warn"><div class="k" x-text="'Entro '+prefs.expiry_warning_days+' giorni'"></div><div class="v" x-text="exp.components.filter(x=>x.days!==null&&x.days>=0&&x.days<=prefs.expiry_warning_days).length"></div></div>
+              <div class="card kpi err"><div class="k">Scadute</div><div class="v" x-text="exp.components.filter(x=>x.days!==null&&x.days<0).length"></div></div>
+              <div class="card kpi ok"><div class="k">Oltre soglia</div><div class="v" x-text="exp.components.filter(x=>x.days!==null&&x.days>prefs.expiry_warning_days).length"></div></div>
+            </div>
+            <div class="tbl-wrap"><table class="tbl responsive"><thead><tr><th>Plugin / tema / licenza</th><th>Piattaforma</th><th>Fornitore</th><th>Data scadenza</th><th>Tempo residuo</th><th>Note</th><th></th></tr></thead><tbody>
+              <template x-for="x in exp.components" :key="x.id"><tr><td><b x-text="x.name"></b></td><td><span class="badge" :class="x.platform==='wp'?'wp':(x.platform==='joomla'?'joomla':'')" x-text="platformLabel(x.platform)"></span></td><td x-text="x.provider||'—'"></td><td><b x-text="fmtDay(x.expires_at)"></b><div class="small mut" x-text="x.recur_label"></div></td><td><span class="badge" :class="expiryDaysClass(x.days)" x-text="expiryDaysText(x.days)"></span></td><td class="small mut" x-text="x.notes||'—'"></td><td><div class="acts" style="opacity:1"><button class="btn sm primary" x-show="x.recur_months>0" @click="renewExpiry(x)" title="Sposta la scadenza avanti di un periodo">↻ Rinnovata</button><button class="btn sm" @click="editExpiry(x)">Modifica</button><button class="btn sm danger" @click="deleteExpiry(x)">Elimina</button></div></td></tr></template>
+            </tbody></table><div class="empty" x-show="!exp.loadingComponents&&!exp.components.length">Nessuna licenza registrata.</div></div>
+          </div>
+        </template>
+
+        <!-- ===== SECURITY ===== -->
+        <template x-if="route.page==='security'">
+          <div>
+            <div class="row" style="flex-wrap:wrap"><div><h1 class="page-title">Centro sicurezza</h1><div class="page-sub">Vulnerabilità note sulle estensioni installate · ultima scansione <span x-text="sec.summary?fmtDate(sec.summary.last_scan):'—'"></span></div></div><div class="sp"></div><button class="btn sm" @click="scanNow()">Scansiona ora</button></div>
+            <div class="grid kpi" style="margin:18px 0" x-show="sec.summary">
+              <div class="card kpi err" @click="sec.sev='critical'"><div class="k">Critiche</div><div class="v" x-text="sec.summary?.critical"></div><div class="d"><span x-text="sec.summary?.exploited"></span> sfruttate attivamente</div></div>
+              <div class="card kpi warn" @click="sec.sev='high'"><div class="k">Alte</div><div class="v" x-text="sec.summary?.high"></div></div>
+              <div class="card kpi" @click="sec.sev='medium'"><div class="k">Medie / basse</div><div class="v" x-text="(sec.summary?.medium||0)+(sec.summary?.low||0)"></div></div>
+              <div class="card kpi acc" @click="sec.sev=''"><div class="k">Siti coinvolti</div><div class="v" x-text="sec.summary?.sites_affected"></div><div class="d">totale <span x-text="sec.summary?.total"></span> match</div></div>
+            </div>
+            <div class="chips" style="margin-bottom:12px">
+              <span class="fchip" :class="sec.sev===''?'on':''" @click="sec.sev=''">Tutte</span>
+              <template x-for="sv in ['critical','high','medium','low']" :key="sv"><span class="fchip" :class="sec.sev===sv?'on':''" @click="sec.sev=sv" x-text="sv"></span></template>
+            </div>
+            <div class="tbl-wrap">
+              <table class="tbl responsive">
+                <thead><tr><th>Sev.</th><th>Sito</th><th>Estensione</th><th>CVE</th><th>Installata</th><th>Fix in</th><th></th></tr></thead>
+                <tbody>
+                  <template x-for="m in sec.items.filter(x=>!sec.sev||x.severity===sec.sev)" :key="m.match_id">
+                    <tr>
+                      <td><span class="badge" :class="m.severity==='critical'?'err':(m.severity==='high'?'warn':'')" x-text="m.severity"></span> <span class="badge err" x-show="m.exploited">exploited</span></td>
+                      <td><a :href="'#/site/'+m.site_id" x-text="m.site_name"></a></td>
+                      <td><span x-text="m.ext_name||m.ext_slug"></span></td>
+                      <td><a :href="m.url" target="_blank" class="mono" x-text="m.cve_id"></a><div class="small mut" x-text="m.title"></div></td>
+                      <td class="mono" x-text="m.site_version"></td>
+                      <td class="mono" x-text="m.version_fixed||'—'"></td>
+                      <td class="hide-m small mut" x-text="ago(m.first_seen)"></td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+              <div class="empty" x-show="!sec.loading&&!sec.items.length">Nessuna vulnerabilità attiva 🎉</div>
+            </div>
+          </div>
+        </template>
+
+        <!-- ===== HISTORY ===== -->
+        <template x-if="route.page==='history'">
+          <div>
+            <h1 class="page-title">Storico aggiornamenti</h1>
+            <div class="page-sub">Ultimi 7 giorni · <span x-text="histSummary?histSummary.ok:0"></span> riusciti · <span x-text="histSummary?histSummary.failed:0"></span> falliti</div>
+            <div class="card" style="margin-top:16px"><div class="timeline">
+              <template x-for="h in history" :key="h.id">
+                <div class="ev"><span class="dot" :class="h.ok?'ok':'err'" style="margin-top:6px"></span><div><a :href="'#/site/'+h.site_id" x-text="h.site_name"></a> · <b x-text="h.name"></b> <span class="badge" x-text="h.type"></span> <span class="mono small mut" x-text="h.from+' → '+h.to"></span><div class="err small" x-show="!h.ok" x-text="h.error"></div></div><div class="when" x-text="fmtDate(h.at)"></div></div>
+              </template>
+              <div class="empty" x-show="!history.length">Nessun update negli ultimi 7 giorni</div>
+            </div></div>
+          </div>
+        </template>
+
+        <!-- ===== REPORT MENSILE ===== -->
+        <template x-if="route.page==='reports'">
+          <div>
+            <div class="row" style="flex-wrap:wrap;gap:10px">
+              <div><h1 class="page-title">Report mensile</h1><div class="page-sub">PDF intestato con il riepilogo del mese, inviato per email in automatico.</div></div>
+              <div class="sp"></div>
+              <select class="input" style="max-width:210px" x-model="rep.scope" @change="repScopeChanged()">
+                <template x-for="s in rep.scopes" :key="s.key"><option :value="s.key" x-text="s.label+' ('+s.sites+' siti)'"></option></template>
+              </select>
+              <select class="input" style="max-width:190px" x-model="rep.period" @change="repScopeChanged()">
+                <template x-for="p in rep.periods" :key="p.period"><option :value="p.period" x-text="p.label+' — '+p.updates+' update'"></option></template>
+              </select>
+              <button class="btn" @click="openTokenLink(() => reportPdfUrl())">⬇ Scarica PDF</button>
+              <button class="btn" :disabled="rep.busy" @click="sendReportNow(false)">Invia questo</button>
+              <button class="btn primary" :disabled="rep.busy||!repEnabledCount" @click="sendReportNow(true)"><span class="spinner" x-show="rep.busy"></span> Invia tutti (<span x-text="repEnabledCount"></span>)</button>
+            </div>
+            <div class="msg ok" x-show="rep.msg" x-text="rep.msg"></div>
+            <div class="msg err" x-show="rep.err" x-text="rep.err"></div>
+
+            <template x-if="rep.cfg">
+            <div class="grid" style="grid-template-columns:380px 1fr;margin-top:16px" id="rep-grid">
+              <div>
+                <div class="card">
+                  <h3>Invio automatico</h3>
+                  <label class="check" style="margin-bottom:10px"><input type="checkbox" x-model="rep.cfg.enabled" @change="rep.dirty=true"> Invia il report ogni mese</label>
+                  <div class="row" style="gap:8px">
+                    <div class="field" style="flex:1"><label>Giorno</label><input class="input" type="number" min="1" max="28" x-model.number="rep.cfg.send_day" @change="rep.dirty=true"></div>
+                    <div class="field" style="flex:1"><label>Ora</label><input class="input" type="number" min="0" max="23" x-model.number="rep.cfg.send_hour" @change="rep.dirty=true"></div>
+                  </div>
+                  <div class="field"><label>Indirizzo a cui inviare i report</label><input class="input" type="email" x-model="rep.cfg.recipients" @input="rep.dirty=true" placeholder="reports@example.com"><div class="hint">Tutti i report (globale e per cartella) arrivano qui. Vuoto = destinatario impostato nel file <span class="mono">.env</span>.</div></div>
+                  <div class="hint">Il report copre sempre il mese <b>precedente</b>: il giorno 1 ricevi quello appena concluso.</div>
+                </div>
+
+                <div class="card" style="margin-top:14px">
+                  <h3>Report da inviare ogni mese</h3>
+                  <div class="small mut" style="margin-bottom:8px">Un PDF separato per ogni cartella spuntata, più eventualmente quello globale. Arrivano tutti nella stessa email di destinazione, come allegati distinti.</div>
+                  <template x-for="s in rep.scopes" :key="s.key">
+                    <div style="padding:8px 0;border-bottom:1px solid var(--bd)">
+                      <label class="check"><input type="checkbox" x-model="s.enabled" @change="syncScopes()">
+                        <span style="flex:1" x-text="s.label"></span><span class="badge" x-text="s.sites+' siti'"></span></label>
+                    </div>
+                  </template>
+                  <div class="small mut" style="margin-top:8px" x-show="!repEnabledCount">Nessun report attivo: l'invio automatico non partirà.</div>
+                </div>
+
+                <div class="card" style="margin-top:14px">
+                  <h3>Intestazione</h3>
+                  <div class="field"><label>Ragione sociale</label><input class="input" x-model="rep.cfg.company" @input="repTouch()"></div>
+                  <div class="field"><label>Titolo del report</label><input class="input" x-model="rep.cfg.title" @input="repTouch()"></div>
+                  <div class="field"><label>Testo introduttivo</label><textarea class="input" rows="3" x-model="rep.cfg.intro" @input.debounce.500ms="repTouch()"></textarea></div>
+                  <div class="field"><label>Nota a piè di pagina</label><input class="input" x-model="rep.cfg.footer" @input.debounce.500ms="repTouch()"></div>
+                  <div class="hint">Il logo è quello caricato in <a href="#/settings">Impostazioni → Branding</a>.</div>
+                </div>
+
+                <div class="card" style="margin-top:14px">
+                  <h3>Cosa includere</h3>
+                  <label class="check" style="padding:4px 0"><input type="checkbox" x-model="rep.cfg.show_summary" @change="repTouch()"> Riepilogo del periodo</label>
+                  <label class="check" style="padding:4px 0"><input type="checkbox" x-model="rep.cfg.show_sites" @change="repTouch()"> Dettaglio per sito (componenti e quante volte)</label>
+                  <label class="check" style="padding:4px 0"><input type="checkbox" x-model="rep.cfg.show_top" @change="repTouch()"> Componenti più aggiornati</label>
+                  <label class="check" style="padding:4px 0"><input type="checkbox" x-model="rep.cfg.show_failed" @change="repTouch()"> Aggiornamenti non riusciti</label>
+                  <label class="check" style="padding:4px 0"><input type="checkbox" x-model="rep.cfg.show_compare" @change="repTouch()"> Confronto col mese precedente</label>
+                  <label class="check" style="padding:4px 0"><input type="checkbox" x-model="rep.cfg.show_security" @change="repTouch()"> Stato sicurezza</label>
+                  <label class="check" style="padding:4px 0"><input type="checkbox" x-model="rep.cfg.show_expiries" @change="repTouch()"> Scadenze in arrivo</label>
+                  <div class="field" style="margin-top:10px" x-show="rep.cfg.show_expiries"><label>Orizzonte scadenze (giorni)</label><input class="input" type="number" min="7" max="365" x-model.number="rep.cfg.expiry_horizon_days" @change="repTouch()"></div>
+                </div>
+
+                <div class="card" style="margin-top:14px">
+                  <div class="row"><h3 style="margin:0;flex:1">Layout PDF (avanzato)</h3><label class="check"><input type="checkbox" x-model="rep.advanced" @change="previewReport()"> modifica HTML</label></div>
+                  <template x-if="rep.advanced">
+                    <div style="margin-top:10px">
+                      <textarea class="input mono" rows="14" x-model="rep.template" @input.debounce.700ms="repTouch()"></textarea>
+                      <div class="hint">Jinja + CSS di stampa. Variabili: <span class="mono">period_label, total_updates, sites_touched, distinct_items, total_failed, sites[] (name, url, cms_label, total, components[]), top_items[], failed_items[], security, domains[], licenses[], cfg, logo</span>.</div>
+                      <button class="btn sm ghost" style="margin-top:8px" @click="resetReportTemplate()">Ripristina layout predefinito</button>
+                    </div>
+                  </template>
+                </div>
+
+                <div class="row" style="margin-top:14px">
+                  <button class="btn primary" :disabled="rep.busy||!rep.dirty" @click="saveReportCfg()">Salva impostazioni</button>
+                  <span class="small mut" x-show="!rep.dirty">Nessuna modifica</span>
+                </div>
+                <div class="card" style="margin-top:14px">
+                  <h3>Email di accompagnamento</h3>
+                  <div class="small mut">Oggetto e testo dell'email a cui è allegato il PDF si modificano in <a href="#/notifications">Notifiche → Report mensile</a>.</div>
+                </div>
+              </div>
+
+              <div>
+                <div class="card">
+                  <div class="row" style="flex-wrap:wrap"><h3 style="margin:0;flex:1">Anteprima — <span x-text="repScopeLabel"></span> · <span x-text="repPeriodLabel"></span></h3><span class="spinner" x-show="rep.busy"></span><button class="btn sm ghost" @click="openPreviewFull(rep.html)">⤢ A tutta pagina</button></div>
+                  <div style="background:#fff;border-radius:8px;overflow:hidden;margin-top:10px">
+                    <iframe :srcdoc="rep.html" sandbox="allow-same-origin" style="width:100%;height:600px;border:0;background:#fff;display:block" @load="fitFrame($event.target, 400, 30000)"></iframe>
+                  </div>
+                </div>
+              </div>
+            </div>
+            </template>
+
+            <div class="card" style="margin-top:16px" x-show="rep.trend">
+              <div class="row" style="flex-wrap:wrap">
+                <h3 style="margin:0;flex:1">Confronto mensile — <span x-text="rep.trend&&rep.trend.scope_label"></span></h3>
+                <span class="small mut">totale <b x-text="rep.trend&&rep.trend.total"></b> · media <b x-text="rep.trend&&rep.trend.avg"></b>/mese</span>
+                <select class="input" style="max-width:130px" x-model.number="rep.trendMonths" @change="loadTrend()">
+                  <option value="6">6 mesi</option><option value="12">12 mesi</option><option value="24">24 mesi</option>
+                </select>
+              </div>
+              <div class="bars" style="height:150px;margin-top:12px">
+                <template x-for="m in (rep.trend?rep.trend.months:[])" :key="m.period">
+                  <div class="b" :title="m.label+': '+m.updates+' aggiornamenti su '+m.sites+' siti'" style="cursor:pointer" @click="rep.period=m.period;repScopeChanged()">
+                    <div class="bv" x-show="m.updates" x-text="m.updates"></div>
+                    <div class="seg ok" :style="'height:'+trendBarH(m)+';opacity:'+(m.period===rep.period?1:.65)"></div>
+                    <div class="lb" x-text="m.label.split(' ')[0].slice(0,3)+' '+m.label.split(' ')[1].slice(2)"></div>
+                  </div>
+                </template>
+              </div>
+              <div class="tbl-wrap" style="margin-top:14px">
+                <table class="tbl responsive">
+                  <thead><tr><th>Mese</th><th class="n">Aggiornamenti</th><th class="n">Variazione</th><th class="n">Siti</th><th class="n">Componenti</th><th class="n">Non riusciti</th></tr></thead>
+                  <tbody>
+                    <template x-for="m in (rep.trend?[...rep.trend.months].reverse():[])" :key="'r'+m.period">
+                      <tr class="row" :class="m.period===rep.period?'selected':''" @click="rep.period=m.period;repScopeChanged()">
+                        <td><b x-text="m.label"></b></td>
+                        <td class="num" x-text="m.updates"></td>
+                        <td class="num"><span :class="deltaCls(m)" x-text="deltaTxt(m)"></span></td>
+                        <td class="num hide-m" x-text="m.sites"></td>
+                        <td class="num hide-m" x-text="m.components"></td>
+                        <td class="num"><span :class="m.failed?'err':'mut'" x-text="m.failed"></span></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+              <div class="small mut" style="margin-top:8px">Clicca un mese per aprirne il report. Il PDF include anche il confronto col mese precedente (disattivabile in «Cosa includere»).</div>
+            </div>
+          </div>
+        </template>
+
+        <!-- ===== NOTIFICHE ===== -->
+        <template x-if="route.page==='notifications'">
+          <div>
+            <h1 class="page-title">Notifiche</h1>
+            <div class="page-sub">Modifica i messaggi direttamente in modalità visuale e controlla subito come arriveranno davvero. Le variabili tra <span class="mono">{{ }}</span> vengono sostituite al momento dell'invio.</div>
+            <div class="grid" style="grid-template-columns:280px 1fr;margin-top:16px" id="notif-grid">
+              <div class="card" style="padding:8px">
+                <template x-for="e in notif.events" :key="e.event">
+                  <div class="nav"><div class="item" :class="notif.cur&&notif.cur.event===e.event?'on':''" @click="selNotif(e.event)" style="align-items:flex-start">
+                    <span class="dot" :class="e.config.enabled?(e.config.email||e.config.telegram?'ok':'mut'):'mut'" style="margin-top:6px"></span>
+                    <div style="flex:1;min-width:0"><div x-text="e.label"></div><div class="small mut" style="white-space:normal" x-text="[e.config.email?'email':'',e.config.telegram?'telegram':''].filter(Boolean).join(' + ')||'nessun canale'"></div></div>
+                  </div></div>
+                </template>
+              </div>
+
+              <template x-if="notif.cur && notif.edit">
+              <div>
+                <div class="card">
+                  <div class="row" style="flex-wrap:wrap;gap:14px">
+                    <div style="flex:1;min-width:200px"><b x-text="notif.cur&&notif.cur.label"></b><div class="small mut" x-text="notif.cur&&notif.cur.desc"></div></div>
+                    <label class="check"><input type="checkbox" x-model="notif.edit.enabled"> Attivo</label>
+                    <label class="check"><input type="checkbox" x-model="notif.edit.email"> Email</label>
+                    <label class="check"><input type="checkbox" x-model="notif.edit.telegram"> Telegram</label>
+                  </div>
+                </div>
+
+                <div class="notif-studio" style="margin-top:14px">
+                  <div class="card notif-editor-card">
+                    <div class="row" style="flex-wrap:wrap;margin-bottom:12px">
+                      <div>
+                        <h3 style="margin:0 0 3px">Editor visuale</h3>
+                        <div class="small mut">Clicca direttamente nel messaggio per modificarlo.</div>
+                      </div>
+                      <div class="sp"></div>
+                      <button class="btn sm ghost" x-show="notif.tab!=='subject'" @click="notif.source=!notif.source; if(!notif.source) $nextTick(()=>loadNotifEditors(true))" x-text="notif.source?'Torna al visuale':'HTML avanzato'"></button>
+                    </div>
+
+                    <div class="tabs notif-tabs">
+                      <button :class="notif.tab==='email'?'on':''" @click="notif.tab='email'; notif.source=false; $nextTick(()=>loadNotifEditors())">Email</button>
+                      <button :class="notif.tab==='telegram'?'on':''" @click="notif.tab='telegram'; notif.source=false; $nextTick(()=>loadNotifEditors())">Telegram</button>
+                      <button :class="notif.tab==='subject'?'on':''" @click="notif.tab='subject'; notif.source=false">Oggetto email</button>
+                    </div>
+
+                    <div class="small mut" style="margin-bottom:6px">Variabili dinamiche — clicca per inserirle nel punto del cursore:</div>
+                    <div class="chips notif-vars" style="margin-bottom:12px">
+                      <template x-for="(d,v) in (notif.cur?notif.cur.vars:{})" :key="v"><span class="fchip" :title="d" @mousedown.prevent @click="insertVar(v)" x-text="'{{ '+v+' }}'"></span></template>
+                    </div>
+
+                    <div x-show="notif.tab==='subject'">
+                      <div class="field" style="margin:0"><label>Oggetto dell'email</label><input id="nf_subject" class="input" x-model="notif.edit.subject" @input.debounce.350ms="previewNotif()" placeholder="Oggetto email"></div>
+                    </div>
+
+                    <div x-show="notif.tab!=='subject' && !notif.source">
+                      <div class="wys-toolbar">
+                        <button type="button" title="Grassetto" @click="formatNotif('bold')"><b>B</b></button>
+                        <button type="button" title="Corsivo" @click="formatNotif('italic')"><i>I</i></button>
+                        <button type="button" title="Sottolineato" x-show="notif.tab==='email'" @click="formatNotif('underline')"><u>U</u></button>
+                        <span class="wys-sep"></span>
+                        <button type="button" title="Allinea a sinistra" x-show="notif.tab==='email'" @click="formatNotif('justifyLeft')">≡</button>
+                        <button type="button" title="Centra" x-show="notif.tab==='email'" @click="formatNotif('justifyCenter')">≡</button>
+                        <button type="button" title="Allinea a destra" x-show="notif.tab==='email'" @click="formatNotif('justifyRight')">≡</button>
+                        <span class="wys-sep" x-show="notif.tab==='email'"></span>
+                        <button type="button" title="Elenco puntato" x-show="notif.tab==='email'" @click="formatNotif('insertUnorderedList')">• Lista</button>
+                        <button type="button" title="Elenco numerato" x-show="notif.tab==='email'" @click="formatNotif('insertOrderedList')">1. Lista</button>
+                        <span class="wys-sep"></span>
+                        <button type="button" title="Inserisci link" @click="notifLink()">🔗 Link</button>
+                        <label class="wys-color" x-show="notif.tab==='email'" title="Colore testo"><span>A</span><input type="color" value="#172033" @input="notifColor($event.target.value)"></label>
+                        <button type="button" title="Rimuovi formattazione" @click="formatNotif('removeFormat')">Tx</button>
+                      </div>
+
+                      <div x-show="notif.tab==='email'" class="wys-shell email-shell">
+                        <div class="wys-email-subject"><span class="mut">Oggetto:</span> <b x-text="notif.edit&&notif.edit.subject"></b></div>
+                        <div id="nf_visual_email" class="wys-editor email-editor" contenteditable="true" spellcheck="true"
+                             x-init="$nextTick(() => loadNotifEditors(true))"
+                             @focus="notifRememberSelection('email')" @keyup="notifRememberSelection('email')" @mouseup="notifRememberSelection('email')"
+                             @input.debounce.300ms="notifEditorInput('email')"></div>
+                      </div>
+
+                      <div x-show="notif.tab==='telegram'" class="tg-editor-wrap">
+                        <div class="tg-phone">
+                          <div class="tg-top">Telegram · Sentinel TD</div>
+                          <div id="nf_visual_telegram" class="wys-editor telegram-editor" contenteditable="true" spellcheck="true"
+                               x-init="$nextTick(() => loadNotifEditors(true))"
+                               @focus="notifRememberSelection('telegram')" @keyup="notifRememberSelection('telegram')" @mouseup="notifRememberSelection('telegram')"
+                               @input.debounce.300ms="notifEditorInput('telegram')"></div>
+                        </div>
+                        <div class="small mut" style="margin-top:7px">Telegram supporta grassetto, corsivo, codice e link. Le altre formattazioni vengono semplificate automaticamente.</div>
+                      </div>
+                    </div>
+
+                    <div x-show="notif.tab!=='subject' && notif.source">
+                      <div class="msg info" style="margin-top:0">Modalità avanzata: qui puoi intervenire sul codice. Tornando al visuale l'editor viene aggiornato automaticamente.</div>
+                      <textarea id="nf_body_email" class="input mono" rows="18" x-show="notif.tab==='email'" x-model="notif.edit.body_email" @input.debounce.350ms="previewNotif()"></textarea>
+                      <textarea id="nf_body_telegram" class="input mono" rows="14" x-show="notif.tab==='telegram'" x-model="notif.edit.body_telegram" @input.debounce.350ms="previewNotif()"></textarea>
+                    </div>
+
+                    <div class="row" style="margin-top:14px;flex-wrap:wrap">
+                      <button class="btn primary" :disabled="notif.busy||!notifDirty" @click="saveNotif()">Salva modifiche</button>
+                      <button class="btn" :disabled="notif.busy" @click="testNotif()">Invia test reale</button>
+                      <button class="btn ghost" @click="resetNotif()">Ripristina default</button>
+                      <div class="sp"></div>
+                      <span class="msg ok" style="margin:0" x-show="notif.msg" x-text="notif.msg"></span><span class="msg err" style="margin:0" x-show="notif.err" x-text="notif.err"></span>
+                    </div>
+                  </div>
+
+                  <div class="card notif-preview-card" x-show="notif.preview">
+                    <div class="row" style="flex-wrap:wrap;margin-bottom:12px">
+                      <div><h3 style="margin:0 0 3px">Anteprima reale</h3><div class="small mut">Dati di esempio già sostituiti: questo è l'aspetto finale del messaggio.</div></div>
+                      <div class="sp"></div>
+                      <div class="tabs preview-tabs" style="margin:0"><button :class="notif.previewTab==='email'?'on':''" @click="notif.previewTab='email'">Email</button><button :class="notif.previewTab==='telegram'?'on':''" @click="notif.previewTab='telegram'">Telegram</button></div>
+                    </div>
+                    <div class="msg err" x-show="notif.preview&&notif.preview.error" x-text="notif.preview&&notif.preview.error"></div>
+
+                    <div x-show="notif.previewTab==='email'" class="mail-preview">
+                      <div class="mail-meta"><div><span>Da</span><b>Sentinel TD</b></div><div><span>Oggetto</span><b x-text="notif.preview&&notif.preview.subject"></b></div></div>
+                      <iframe class="notif-email-frame" sandbox="allow-same-origin" :srcdoc="emailPreviewDoc()" title="Anteprima email" @load="fitFrame($event.target, 200, 2400)"></iframe>
+                    </div>
+
+                    <div x-show="notif.previewTab==='telegram'" class="tg-preview-stage">
+                      <div class="tg-preview-phone">
+                        <div class="tg-preview-head"><div class="tg-avatar">S</div><div><b>Sentinel TD</b><div class="small">bot</div></div></div>
+                        <div class="tg-bubble" x-html="notif.preview&&notif.preview.body_telegram"></div>
+                        <div class="tg-time">ora ✓✓</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              </template>
+            </div>
+          </div>
+        </template>
+
+        <!-- ===== ACCOUNT ===== -->
+        <template x-if="route.page==='account'">
+          <div>
+            <h1 class="page-title">Account</h1>
+            <div class="page-sub">Credenziali e sicurezza dell'accesso a Sentinel TD.</div>
+            <div class="grid two" style="margin-top:16px">
+              <div class="card">
+                <h3>Credenziali</h3>
+                <div class="field"><label>Username</label><div class="row"><input class="input" x-model="account.username" placeholder="admin"><button class="btn sm" @click="saveUsername()">Salva</button></div></div>
+                <div class="field"><label>Cambia password</label><input class="input" type="password" x-model="account.oldPw" placeholder="Password attuale" style="margin-bottom:6px"><div class="row"><input class="input" type="password" x-model="account.newPw" placeholder="Nuova password"><button class="btn sm" @click="savePassword()">Salva</button></div></div>
+                <div class="msg ok" x-show="account.msg" x-text="account.msg"></div><div class="msg err" x-show="account.err" x-text="account.err"></div>
+              </div>
+              <div class="card">
+                <h3>Verifica in due passaggi</h3>
+                <div class="row" style="padding:8px 0;border-bottom:1px solid var(--bd)"><div style="flex:1"><b>Authenticator (TOTP)</b><div class="small mut">Google Authenticator, Authy, 1Password…</div></div><span class="badge" :class="sec2fa.totp?'ok':''" x-text="sec2fa.totp?'attivo':'non attivo'"></span><button class="btn sm" x-show="!sec2fa.totp&&!sec2fa.setup" @click="totpSetup()">Configura</button><button class="btn sm danger" x-show="sec2fa.totp" @click="totpDisable()">Disattiva</button></div>
+                <template x-if="sec2fa.setup"><div style="padding:12px 0;border-bottom:1px solid var(--bd)"><div class="small mut" style="margin-bottom:8px">Inquadra il QR con l'app, poi inserisci il codice per confermare.</div><div style="background:#fff;border-radius:10px;padding:10px;width:190px" x-html="sec2fa.setup.qr_svg"></div><div class="small mut" style="margin:8px 0">Chiave manuale: <span class="mono" x-text="sec2fa.setup.secret"></span></div><div class="row"><input class="input mono" x-model="sec2fa.code" placeholder="123456" inputmode="numeric" style="max-width:160px"><button class="btn sm primary" @click="totpEnable()">Attiva</button><button class="btn sm ghost" @click="sec2fa.setup=null">Annulla</button></div></div></template>
+                <div class="row" style="padding:8px 0"><div style="flex:1"><b>Passkey</b><div class="small mut">Face ID, Touch ID, Windows Hello, chiavi hardware</div></div><button class="btn sm" @click="passkeyRegister()">+ Aggiungi</button></div>
+                <template x-for="p in sec2fa.passkeys" :key="p.id"><div class="row small" style="padding:5px 0 5px 12px"><span style="flex:1" x-text="p.label"></span><button class="btn sm ghost danger" @click="passkeyDelete(p.id)">rimuovi</button></div></template>
+                <div class="msg ok" x-show="sec2fa.msg" x-text="sec2fa.msg"></div><div class="msg err" x-show="sec2fa.err" x-text="sec2fa.err"></div>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- ===== SETTINGS (ULTIMA VOCE MENU) ===== -->
+        <template x-if="route.page==='settings'">
+          <div>
+            <h1 class="page-title">Impostazioni</h1>
+            <div class="page-sub">Configurazione operativa di Sentinel TD. Password, token SMTP e segreti restano fuori da questa pagina.</div>
+            <div class="grid two" style="margin-top:16px">
+              <div>
+                <div class="card">
+                  <h3>Scadenze e avvisi</h3>
+                  <div class="field"><label>Avvisi scadenza domini</label><input class="input" x-model="prefs.domain_alert_text" placeholder="30, 14, 7"><div class="hint">Giorni prima della scadenza, separati da virgola. Esempio: 60, 30, 14, 7.</div></div>
+                  <div class="field"><label>Avvisi plugin / temi / licenze</label><input class="input" x-model="prefs.component_alert_text" placeholder="30, 14, 7"><div class="hint">Puoi usare soglie diverse da quelle dei domini.</div></div>
+                  <div class="grid two compact-grid">
+                    <div class="field"><label>Riscansiona registri ogni</label><div class="input-suffix"><input class="input" type="number" min="1" max="90" x-model.number="prefs.domain_scan_days"><span>giorni</span></div></div>
+                    <div class="field"><label>Lookup domini simultanei</label><input class="input" type="number" min="1" max="8" x-model.number="prefs.domain_parallel_lookups"></div>
+                    <div class="field"><label>Aggiorna anteprime siti ogni</label><div class="input-suffix"><input class="input" type="number" min="1" max="720" x-model.number="prefs.screenshot_every_hours"><span>ore</span></div>
+                      <button class="btn sm" style="margin-top:6px" @click="shootBulk(false)">🖼 Rigenera tutte adesso</button></div>
+                    <div class="field"><label>Soglia gialla</label><div class="input-suffix"><input class="input" type="number" min="1" x-model.number="prefs.expiry_warning_days"><span>giorni</span></div></div>
+                    <div class="field"><label>Soglia rossa</label><div class="input-suffix"><input class="input" type="number" min="1" x-model.number="prefs.expiry_critical_days"><span>giorni</span></div></div>
+                  </div>
+                  <div class="row" style="margin-top:8px"><button class="btn primary" :disabled="prefs.busy" @click="savePrefs()">Salva impostazioni scadenze</button><span class="msg ok" style="margin:0" x-show="prefs.msg" x-text="prefs.msg"></span><span class="msg err" style="margin:0" x-show="prefs.err" x-text="prefs.err"></span></div>
+                </div>
+                <div class="card" style="margin-top:16px">
+                  <h3>Branding</h3>
+                  <div class="brand-preview"><img :src="brand.logo_url" alt="Logo"><div><b>Logo applicazione</b><div class="small mut" x-text="brand.custom_logo?'Personalizzato':'Automatico dal logo incluso nel pacchetto'"></div></div></div>
+                  <div class="row" style="margin:10px 0 18px;flex-wrap:wrap"><label class="btn sm">Scegli logo<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="display:none" @change="uploadBrand('logo',$event)"></label><button class="btn sm ghost" x-show="brand.custom_logo" @click="resetBrand('logo')">Ripristina incluso</button></div>
+                  <div class="brand-preview favicon-preview"><img :src="brand.favicon_url" alt="Favicon"><div><b>Favicon</b><div class="small mut" x-text="brand.custom_favicon?'Personalizzata':'Automatica dalla favicon inclusa nel pacchetto'"></div></div></div>
+                  <div class="row" style="margin-top:10px;flex-wrap:wrap"><label class="btn sm">Scegli favicon<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml,image/x-icon" style="display:none" @change="uploadBrand('favicon',$event)"></label><button class="btn sm ghost" x-show="brand.custom_favicon" @click="resetBrand('favicon')">Ripristina inclusa</button></div>
+                </div>
+              </div>
+              <div>
+                <div class="card">
+                  <h3>Connettori</h3>
+                  <template x-for="c in conn.list" :key="c.kind"><div class="row" style="padding:10px 0;border-bottom:1px solid var(--bd)"><span class="cms" :class="c.kind==='wp'?'wp':'joomla'" x-text="c.kind==='wp'?'WP':'JOOMLA'"></span><div style="flex:1"><div x-text="c.kind==='wp'?'td-panopticon':'plg_system_tdpanopticon'"></div><div class="small mut" x-show="c.present"><span x-show="c.version" x-text="'v'+c.version+' · '"></span><span x-text="fmtDate(c.mtime*1000)"></span></div><div class="small mut" x-show="!c.present">non caricato</div></div><button class="btn sm" x-show="c.present" @click="downloadConn(c.kind)">Scarica</button><label class="btn sm"><span x-text="c.present?'Sostituisci':'Carica'"></span><input type="file" accept=".zip" style="display:none" :disabled="conn.busy" @change="uploadConn(c.kind,$event)"></label></div></template>
+                  <div class="msg ok" x-show="conn.msg" x-text="conn.msg"></div><div class="msg err" x-show="conn.err" x-text="conn.err"></div>
+                  <h3 style="margin-top:20px">Registrazione automatica (WordPress)</h3><div class="small mut" style="margin-bottom:8px">Chiave da mettere nella costante <span class="mono">TDPANOP_HUB_KEY</span> del connettore.</div><div class="row"><input class="input mono small" readonly :value="conn.regKey" onclick="this.select()"><button class="btn sm" @click="copy(conn.regKey)">Copia</button><button class="btn sm" @click="rotateKey()">Rigenera</button></div>
+                </div>
+                <div class="card" style="margin-top:16px"><h3>Notifiche</h3><div class="row"><div class="small mut" style="flex:1">Testi, HTML, anteprime e canali si modificano nella pagina <a href="#/notifications">Notifiche</a>. SMTP e token Telegram restano nel file <span class="mono">.env</span>.</div><button class="btn sm" @click="telegramTest()">Test Telegram</button></div></div>
+              </div>
+            </div>
+          </div>
+        </template>
+      </main>
+    </div>
+  </div>
+</template>
+
+<!-- ===================== DRAWER: PLUGIN / TEMA / LICENZA GLOBALE ===================== -->
+<template x-if="token&&expiryEdit">
+  <div><div class="overlay" @click="expiryEdit=false"></div>
+  <div class="drawer" @keydown.escape.window="expiryEdit=false">
+    <div class="head"><h2 x-text="expiryForm.id?'Modifica scadenza':'Aggiungi plugin / tema / licenza'"></h2><div class="sp"></div><button class="btn icon ghost" @click="expiryEdit=false">✕</button></div>
+    <div class="body">
+      <div class="field"><label>Plugin / tema / licenza</label><input class="input" x-model="expiryForm.name" placeholder="es. YOOtheme Pro, Akeeba Pro, WP Rocket"></div>
+      <div class="field"><label>Piattaforma</label><select class="input" x-model="expiryForm.platform"><option value="wp">WordPress</option><option value="joomla">Joomla</option><option value="both">WordPress + Joomla / Entrambi</option></select><div class="hint">Non viene associato a un singolo sito.</div></div>
+      <div class="field"><label>Fornitore</label><input class="input" x-model="expiryForm.provider" placeholder="es. YOOtheme, Akeeba, WP Media"></div>
+      <div class="field"><label>Data scadenza / rinnovo</label><input class="input" type="date" x-model="expiryForm.date"></div>
+      <div class="field"><label>Ricorrenza</label>
+        <select class="input" x-model.number="expiryForm.recur">
+          <option value="0">Una tantum (nessun rinnovo)</option>
+          <option value="1">Mensile</option>
+          <option value="3">Trimestrale</option>
+          <option value="6">Semestrale</option>
+          <option value="12">Annuale</option>
+          <option value="24">Biennale</option>
+          <option value="-1">Personalizzata (ogni N mesi)</option>
+        </select>
+        <div class="row" x-show="expiryForm.recur===-1" style="margin-top:6px"><span class="small mut">ogni</span><input class="input" type="number" min="1" max="120" x-model.number="expiryForm.recurCustom" style="max-width:90px"><span class="small mut">mesi</span></div>
+        <div class="hint">Con una ricorrenza, il bottone «Rinnovata» sposta la scadenza avanti di un periodo e riarma gli avvisi.</div>
+      </div>
+      <div class="field"><label>Note</label><textarea class="input" rows="4" x-model="expiryForm.notes" placeholder="Piano, account, rinnovo automatico, riferimenti…"></textarea></div>
+      <div class="msg err" x-show="expiryErr" x-text="expiryErr"></div>
+      <div class="small mut">Gli avvisi seguono le soglie configurate in Impostazioni → Scadenze e avvisi.</div>
+    </div>
+    <div class="foot"><button class="btn" @click="expiryEdit=false">Annulla</button><button class="btn primary" @click="saveExpiry()">Salva</button></div>
+  </div></div>
+</template>
+
+<!-- ===================== DRAWER: SITO ===================== -->
+<template x-if="token&&drawer==='site'">
+  <div><div class="overlay" @click="drawer=null"></div>
+  <div class="drawer" @keydown.escape.window="drawer=null">
+    <div class="head"><h2 x-text="form.id?'Modifica sito':'Nuovo sito'"></h2><div class="sp"></div><button class="btn icon ghost" @click="drawer=null">✕</button></div>
+    <div class="body">
+      <div class="field"><label>Nome</label><input class="input" x-model="form.name"></div>
+      <div class="field"><label>URL (senza slash finale)</label><input class="input" x-model="form.url" placeholder="https://sito.it"></div>
+      <div class="field"><label>CMS</label><select class="input" x-model="form.cms"><option value="wp">WordPress</option><option value="joomla">Joomla</option></select></div>
+      <div class="field"><label>Token del connettore</label><input class="input mono" x-model="form.token"><div class="hint">Lo trovi nella pagina del connettore sul sito (o si compila da solo con la registrazione automatica).</div></div>
+      <div class="field"><label>URL admin</label><input class="input" x-model="form.admin_url" placeholder="/wp-admin oppure /login (WPS Hide Login)"></div>
+      <div class="field"><label>Cartelle (separate da virgola)</label><input class="input" x-model="form.tags" list="tagsdl" placeholder="Clienti interni, ClienteX/Shop"><datalist id="tagsdl"><template x-for="t in allTags" :key="t"><option :value="t"></option></template></datalist><div class="hint">Usa <span class="mono">Padre/Figlio</span> per le sottocartelle.</div></div>
+      <div class="field"><label>Intervallo check (minuti)</label><input class="input" type="number" min="15" x-model.number="form.poll_interval_minutes"></div>
+      <label class="check"><input type="checkbox" x-model="form.auto_update"> Aggiornamenti automatici</label>
+      <label class="check" style="margin-top:8px"><input type="checkbox" x-model="form.notifications_silenced"> 🔕 Silenzia tutte le notifiche di questo sito</label>
+      <div class="hint" style="margin:4px 0 8px 24px">Il monitoraggio e gli update continuano; vengono sospesi solo email/Telegram, comprese scadenze e vulnerabilità.</div>
+      <label class="check" style="margin-top:8px"><input type="checkbox" x-model="form.enabled"> Sito abilitato (monitoraggio attivo)</label>
+      <div class="msg err" x-show="formErr" x-text="formErr"></div>
+    </div>
+    <div class="foot"><button class="btn" @click="drawer=null">Annulla</button><button class="btn primary" @click="saveSite()">Salva</button></div>
+  </div></div>
+</template>
+
+<!-- ===================== DRAWER: CARTELLE (bulk) ===================== -->
+<template x-if="token&&drawer==='tags'">
+  <div><div class="overlay" @click="drawer=null"></div>
+  <div class="drawer" @keydown.escape.window="drawer=null">
+    <div class="head"><h2>Cartelle · <span x-text="selIds.length+' siti'"></span></h2><div class="sp"></div><button class="btn icon ghost" @click="drawer=null">✕</button></div>
+    <div class="body">
+      <div class="field"><label>Aggiungi a</label><input class="input" x-model="tagsForm.add" list="tagsdl2" placeholder="ClienteX"><datalist id="tagsdl2"><template x-for="t in allTags" :key="t"><option :value="t"></option></template></datalist></div>
+      <div class="field"><label>Rimuovi da</label><input class="input" x-model="tagsForm.remove" placeholder="Vecchia cartella"></div>
+      <div class="hint">Più cartelle separate da virgola. I siti possono stare in più cartelle.</div>
+    </div>
+    <div class="foot"><button class="btn" @click="drawer=null">Annulla</button><button class="btn primary" @click="saveTags()">Applica</button></div>
+  </div></div>
+</template>
+
+<!-- ===================== DRAWER: INSTALLA / RIMUOVI ===================== -->
+<template x-if="token&&drawer==='install'">
+  <div><div class="overlay" @click="drawer=null"></div>
+  <div class="drawer" style="width:min(680px,100vw)" @keydown.escape.window="drawer=null">
+    <div class="head">
+      <div class="tabs" style="margin:0;border:none"><button :class="inst.mode==='install'?'on':''" @click="inst.mode='install'">Installa</button><button :class="inst.mode==='remove'?'on':''" @click="inst.mode='remove'">Rimuovi</button></div>
+      <div class="sp"></div><button class="btn icon ghost" @click="drawer=null">✕</button>
+    </div>
+    <div class="body">
+      <div class="field"><label>Piattaforma</label><select class="input" x-model="inst.cms" @change="inst.sel=[];inst.results=[];inst.rmItems=[]"><option value="wp">WordPress</option><option value="joomla">Joomla</option></select></div>
+
+      <template x-if="inst.mode==='install'">
+        <div>
+          <div class="field"><label>Pacchetto (.zip)</label><input type="file" accept=".zip" @change="inst.file=$event.target.files[0]"></div>
+          <div class="row" x-show="inst.cms==='wp'"><div class="field" style="flex:1"><label>Tipo</label><select class="input" x-model="inst.kind"><option value="plugin">Plugin</option><option value="theme">Tema</option></select></div><label class="check" style="margin-top:14px"><input type="checkbox" x-model="inst.activate"> Attiva dopo l'installazione</label></div>
+        </div>
+      </template>
+
+      <template x-if="inst.mode==='remove'">
+        <div>
+          <div class="field"><label>Cerca estensione</label><div class="row"><input class="input" x-model="inst.q" @keydown.enter="instSearch()" placeholder="nome o slug"><button class="btn" @click="instSearch()">Cerca</button></div></div>
+          <div x-show="inst.searched&&!inst.results.length" class="empty">Nessun risultato</div>
+          <template x-for="r in inst.results" :key="r.type+'|'+r.slug">
+            <div style="border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px" :style="r.protected?'opacity:.5':''">
+              <label class="check" style="align-items:flex-start">
+                <input type="checkbox" :disabled="r.protected" :checked="instSelected(r)" @change="instToggle(r)" style="margin-top:3px">
+                <div style="flex:1;min-width:0">
+                  <div><b x-text="r.name"></b> <span class="badge" x-text="r.type"></span> <span class="badge" x-show="r.protected">protetto</span></div>
+                  <div class="mono small mut" x-text="r.slug"></div>
+                  <div class="small" x-show="(r.versions||[]).length"><span class="mut">versione:</span> <span x-text="(r.versions||[]).map(v=>'v'+v).join(' · ')"></span> <span class="badge warn" x-show="(r.versions||[]).length>1">miste</span></div>
+                </div>
+                <button type="button" class="btn sm ghost" @click.prevent.stop="instToggleOpen(r)" x-text="'su '+r.count+' siti '+(instIsOpen(r)?'▴':'▾')"></button>
+              </label>
+              <div x-show="instIsOpen(r)" style="padding:6px 0 0 28px">
+                <template x-for="d in (r.site_details||[])" :key="d.id"><div class="row small" style="padding:2px 0"><span style="flex:1" x-text="d.name"></span><span class="mono" x-text="d.version?'v'+d.version:'—'"></span><span class="badge warn" x-show="d.update_available" x-text="'→ '+(d.new_version||'update')"></span></div></template>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
+
+      <div class="row" style="margin:14px 0 6px"><label style="font-size:12px;color:var(--txt-2);font-weight:500">Siti di destinazione</label><div class="sp"></div><button class="btn sm ghost" @click="instToggleAll()">Seleziona tutti</button></div>
+      <div style="max-height:220px;overflow:auto;border:1px solid var(--bd);border-radius:10px">
+        <template x-for="s in instSites()" :key="s.id">
+          <label class="check" style="padding:7px 12px;border-bottom:1px solid var(--bd)"><input type="checkbox" :checked="inst.sel.includes(s.id)" @change="inst.sel=inst.sel.includes(s.id)?inst.sel.filter(x=>x!==s.id):[...inst.sel,s.id]"><span class="dot" :class="isOff(s)?'err':'ok'"></span><span style="flex:1" x-text="s.name"></span><span class="small mut" x-text="s.url.replace(/^https?:\/\//,'')"></span></label>
+        </template>
+      </div>
+      <div class="small mut" style="margin-top:6px" x-text="inst.sel.length+' siti selezionati'+(inst.mode==='remove'&&!inst.sel.length?' (vuoto = tutti quelli che hanno l\'estensione)':'')"></div>
+
+      <template x-if="inst.out.length">
+        <div style="margin-top:14px"><h3 class="small mut">Esito</h3>
+          <template x-for="(o,i) in inst.out" :key="i"><div class="row small" style="padding:4px 0"><span class="dot" :class="o.ok?'ok':'err'"></span><span x-text="(o.site||o.site_name||o.name||'')+' — '+(o.message||o.error||(o.ok?'ok':'errore'))"></span></div></template>
+        </div>
+      </template>
+    </div>
+    <div class="foot"><button class="btn" @click="drawer=null">Chiudi</button><button class="btn primary" :disabled="inst.busy" @click="inst.mode==='install'?runInstall():runRemove()"><span class="spinner" x-show="inst.busy"></span> <span x-text="inst.mode==='install'?'Installa':'Rimuovi'"></span></button></div>
+  </div></div>
+</template>
+
+<!-- anteprima report a tutta pagina -->
+<template x-if="token&&previewFull">
+  <div><div class="overlay" @click="previewFull=''"></div>
+  <div style="position:fixed;inset:24px;z-index:43;background:#fff;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow)" @keydown.escape.window="previewFull=''">
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg-2);border-bottom:1px solid var(--bd)">
+      <b style="flex:1;font-size:13px">Anteprima report</b>
+      <button class="btn sm" @click="openTokenLink(() => reportPdfUrl())">⬇ PDF</button>
+      <button class="btn sm ghost" @click="previewFull=''">✕ Chiudi</button>
+    </div>
+    <iframe :srcdoc="previewFull" sandbox="allow-same-origin" style="flex:1;width:100%;border:0;background:#fff"></iframe>
+  </div></div>
+</template>
+
+<div class="toast" x-show="toast" x-text="toast" x-transition></div>
+</body>
+</html>

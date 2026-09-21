@@ -1,0 +1,57 @@
+#language-switcher{
+  --ls-bg:#fff;--ls-border:#c9d0da;--ls-text:#17202c;--ls-muted:#6b7280;--ls-accent:#2675df;--ls-soft:#eaf2ff;
+  position:fixed;right:12px;top:8px;z-index:10000;display:flex;align-items:center;gap:7px;
+  min-height:38px;padding:4px 9px 4px 6px;border:1px solid var(--ls-border);border-radius:11px;
+  background:var(--ls-bg);color:var(--ls-text);box-shadow:0 8px 28px rgba(0,0,0,.16);
+  font:600 13px/1.3 system-ui,-apple-system,"Segoe UI",sans-serif;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)
+}
+#language-switcher .language-switcher__icon{
+  width:28px;height:28px;display:grid;place-items:center;flex:0 0 28px;border-radius:8px;
+  background:var(--ls-soft);color:var(--ls-accent);font-size:14px;line-height:1;cursor:pointer
+}
+#language-switcher select{
+  appearance:none;-webkit-appearance:none;display:block;width:auto;max-width:158px;min-height:28px;margin:0;
+  padding:3px 24px 3px 3px;background:transparent;color:var(--ls-text);border:0;border-radius:6px;
+  font:inherit;cursor:pointer;outline:0
+}
+#language-switcher::after{
+  content:"";position:absolute;right:10px;top:50%;width:7px;height:7px;margin-top:-5px;
+  border-right:1.7px solid var(--ls-muted);border-bottom:1.7px solid var(--ls-muted);transform:rotate(45deg);pointer-events:none
+}
+#language-switcher select:focus-visible{outline:2px solid var(--ls-accent);outline-offset:2px}
+#language-switcher option{background:var(--ls-bg);color:var(--ls-text)}
+html[data-project="panopticon-lite"] #language-switcher{
+  --ls-bg:var(--panel,#151a23);--ls-border:var(--bd-2,#2e3646);--ls-text:var(--txt,#e6e9ef);
+  --ls-muted:var(--mut,#6f7887);--ls-accent:var(--acc,#4f8cff);--ls-soft:var(--acc-bg,rgba(79,140,255,.14));
+  box-shadow:0 7px 22px rgba(0,0,0,.24)
+}
+html[data-project="catasync"] #language-switcher{
+  --ls-bg:var(--surface,#fff);--ls-border:var(--line,#cfd6dd);--ls-text:var(--ink,#171a21);
+  --ls-muted:var(--muted,#6b7684);--ls-accent:var(--accent,#155e75);--ls-soft:color-mix(in srgb,var(--accent,#155e75) 14%,transparent)
+}
+html[data-project="videochat"] #language-switcher{
+  --ls-bg:var(--ink-3,#1f222b);--ls-border:var(--hair-2,rgba(236,231,220,.14));--ls-text:var(--paper,#ece7dc);
+  --ls-muted:var(--paper-3,#7d786e);--ls-accent:var(--accent,#7b5ea7);--ls-soft:var(--accent-soft,rgba(123,94,167,.16))
+}
+/* Reserve a compact strip only for apps where the switcher is floating. Sentinel places it in its own topbar. */
+html[data-project]{--language-strip:48px;padding-top:var(--language-strip)!important;box-sizing:border-box}
+html[data-project="panopticon-lite"]{--language-strip:0px;padding-top:0!important}
+body{min-height:calc(100vh - var(--language-strip))!important}
+html[data-project] .login,html[data-project] .auth-wrap,html[data-project] .login-shell{min-height:calc(100dvh - var(--language-strip))}
+html[data-project] .topbar,html[data-project] .app-header,html[data-project] .sidebar{top:var(--language-strip)}
+html[data-project] .sidebar{height:calc(100dvh - var(--language-strip))}
+html[data-project] body.tdt-room{height:calc(100dvh - var(--language-strip))!important;min-height:0!important}
+html[data-project] .drawer{top:var(--language-strip)}
+html[data-project="panopticon-lite"] #language-switcher.language-switcher--inline{
+  position:relative;right:auto;top:auto;z-index:1;flex:0 0 auto;min-height:34px;height:34px;margin-left:2px;padding:2px 8px 2px 5px;border-radius:9px
+}
+html[data-project="panopticon-lite"] #language-switcher.language-switcher--inline .language-switcher__icon{width:26px;height:26px;flex-basis:26px;border-radius:7px}
+html[data-project="panopticon-lite"] #language-switcher.language-switcher--inline select{min-height:26px;max-width:138px;font-size:12px}
+html[data-project="panopticon-lite"] #language-switcher.language-switcher--inline::after{right:9px}
+@media(max-width:760px){
+  #language-switcher{top:6px;right:7px;min-height:36px;padding-right:8px}
+  #language-switcher select{max-width:140px}
+  html[data-project="panopticon-lite"] #language-switcher.language-switcher--inline select{max-width:112px}
+}
+@media(max-width:520px){html[data-project="panopticon-lite"] #language-switcher.language-switcher--inline .language-switcher__icon{display:none}}
+@media print{#language-switcher{display:none!important}html[data-project]{padding-top:0!important}}

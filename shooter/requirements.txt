@@ -1,0 +1,4 @@
+fastapi==0.122.0
+uvicorn[standard]==0.37.0
+playwright==1.49.1
+pillow==11.1.0

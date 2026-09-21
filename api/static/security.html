@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="it" data-project="panopticon-lite">
+<head>
+<meta charset="utf-8">
+  <script src="/static/i18n/catalog.js"></script>
+  <script src="/static/i18n/i18n.js"></script>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Centro Sicurezza — Panopticon</title>
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<style>
+  :root{
+    --acc:#5b8cff; --bd:#2a2f3a; --bg:#0f1115; --card:#1a1d24;
+    --err:#ff5c5c; --mut:#8b93a1; --ok:#3ecf8e; --txt:#e6e8ec; --warn:#f5a623;
+    --crit:#ff4444; --high:#ff8c42; --med:#f5d423; --low:#8b93a1;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+       font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  a{color:var(--acc);text-decoration:none}
+  .top{display:flex;align-items:center;gap:14px;padding:14px 20px;
+       border-bottom:1px solid var(--bd);position:sticky;top:0;background:var(--bg);z-index:10;flex-wrap:wrap}
+  .top h1{font-size:19px;margin:0;font-weight:600}
+  .top .sp{flex:1}
+  .btn{background:var(--card);color:var(--txt);border:1px solid var(--bd);
+       border-radius:8px;padding:8px 14px;cursor:pointer;font-size:14px}
+  .btn:hover{border-color:var(--acc)}
+  .btn.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .bell{position:relative;font-size:20px;padding:6px 10px;border-radius:8px;
+        background:var(--card);border:1px solid var(--bd);cursor:default}
+  .bell.on{border-color:var(--crit);animation:pulse 2s infinite}
+  .bell .dot{position:absolute;top:2px;right:2px;width:10px;height:10px;
+             border-radius:50%;background:var(--crit)}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,68,68,.4)}50%{box-shadow:0 0 0 6px rgba(255,68,68,0)}}
+  .wrap{max-width:1200px;margin:0 auto;padding:20px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+  .metric{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px}
+  .metric .n{font-size:28px;font-weight:700}
+  .metric .l{font-size:13px;color:var(--mut);margin-top:2px}
+  .metric.crit .n{color:var(--crit)} .metric.high .n{color:var(--high)}
+  .metric.med .n{color:var(--med)} .metric.expl{border-color:var(--crit)}
+  .metric.expl .n{color:var(--crit)}
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+  .filters select,.filters label{background:var(--card);border:1px solid var(--bd);
+       color:var(--txt);border-radius:8px;padding:7px 10px;font-size:14px}
+  .filters label{display:flex;align-items:center;gap:6px;cursor:pointer}
+  .row{background:var(--card);border:1px solid var(--bd);border-radius:12px;
+       padding:14px 16px;margin-bottom:10px;display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+  .row.expl{border-color:var(--crit)}
+  .sev{font-size:12px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
+  .sev.critical{background:rgba(255,68,68,.15);color:var(--crit)}
+  .sev.high{background:rgba(255,140,66,.15);color:var(--high)}
+  .sev.medium{background:rgba(245,212,35,.12);color:var(--med)}
+  .sev.low{background:rgba(139,147,161,.15);color:var(--low)}
+  .sev.unknown{background:rgba(139,147,161,.12);color:var(--mut)}
+  .expl-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;
+              background:var(--crit);color:#fff;white-space:nowrap}
+  .row .body{flex:1;min-width:260px}
+  .row .site{font-weight:600}
+  .row .ext{color:var(--mut);font-size:14px;margin-top:2px}
+  .row .ext code{background:#0f1115;padding:1px 6px;border-radius:4px;color:var(--txt)}
+  .row .title{font-size:13px;color:var(--mut);margin-top:6px}
+  .row .fix{margin-top:8px;font-size:14px}
+  .row .fix .to{color:var(--ok);font-weight:600}
+  .row .meta{font-size:12px;color:var(--mut);margin-top:6px;display:flex;gap:12px;flex-wrap:wrap}
+  .src{text-transform:uppercase;font-size:10px;letter-spacing:.5px;
+       border:1px solid var(--bd);border-radius:4px;padding:1px 5px}
+  .empty{text-align:center;padding:60px 20px;color:var(--mut)}
+  .empty .big{font-size:48px;margin-bottom:10px}
+  .note{background:rgba(91,140,255,.08);border:1px solid rgba(91,140,255,.3);
+        border-radius:10px;padding:12px 16px;font-size:13px;color:var(--mut);margin-bottom:18px}
+  .loading{text-align:center;padding:40px;color:var(--mut)}
+</style>
+
+  <link rel="stylesheet" href="/static/i18n/i18n.css">
+</head>
+<body>
+<div x-data="sec()" x-init="init()">
+
+  <div class="top">
+    <a href="/" class="btn">← Dashboard</a>
+    <h1>🛡️ Centro Sicurezza</h1>
+    <div class="bell" :class="summary.bell?'on':''" :title="summary.bell?'Ci sono vulnerabilità gravi da aggiornare':'Nessuna vulnerabilità grave'">
+      🔔<template x-if="summary.bell"><span class="dot"></span></template>
+    </div>
+    <div class="sp"></div>
+    <span style="color:var(--mut);font-size:13px" x-show="summary.last_scan">
+      Ultima scansione: <span x-text="fmtDate(summary.last_scan)"></span>
+    </span>
+    <button class="btn primary" @click="scanNow()" :disabled="scanning">
+      <span x-show="!scanning">🔄 Scansiona ora</span>
+      <span x-show="scanning">Scansione in corso…</span>
+    </button>
+  </div>
+
+  <div class="wrap">
+
+    <template x-if="authErr">
+      <div class="note" style="background:rgba(255,92,92,.1);border-color:var(--err);color:var(--err)">
+        ⚠️ Sessione scaduta o non valida. <a href="/" style="color:var(--err);text-decoration:underline">Torna alla home e rientra</a> per aggiornare l'accesso.
+      </div>
+    </template>
+
+    <div class="note">
+      ⓘ Questo centro aggrega più fonti gratuite (CISA KEV, VEL Joomla, wordpress.org, NVD) e ti segnala dove non sei aggiornato.
+      È <b>un livello</b> della difesa, non una garanzia assoluta: gli zero-day non sono nei feed nel giorno zero.
+      Tienilo insieme all'hardening delle cartelle upload e agli aggiornamenti automatici.
+    </div>
+
+    <!-- contatori -->
+    <div class="cards">
+      <div class="metric expl">
+        <div class="n" x-text="summary.exploited ?? '—'"></div>
+        <div class="l">🚨 Sfruttate attivamente</div>
+      </div>
+      <div class="metric crit">
+        <div class="n" x-text="summary.critical ?? '—'"></div>
+        <div class="l">🔴 Critiche</div>
+      </div>
+      <div class="metric high">
+        <div class="n" x-text="summary.high ?? '—'"></div>
+        <div class="l">🟠 Alte</div>
+      </div>
+      <div class="metric med">
+        <div class="n" x-text="summary.medium ?? '—'"></div>
+        <div class="l">🟡 Medie</div>
+      </div>
+      <div class="metric">
+        <div class="n" x-text="summary.sites_affected ?? '—'"></div>
+        <div class="l">🌐 Siti coinvolti</div>
+      </div>
+    </div>
+
+    <!-- filtri -->
+    <div class="filters">
+      <select x-model="fSev" @change="load()">
+        <option value="">Tutte le gravità</option>
+        <option value="critical">Critiche</option>
+        <option value="high">Alte</option>
+        <option value="medium">Medie</option>
+        <option value="low">Basse</option>
+      </select>
+      <select x-model="fCms" @change="load()">
+        <option value="">Tutti i CMS</option>
+        <option value="joomla">Joomla</option>
+        <option value="wp">WordPress</option>
+      </select>
+      <label><input type="checkbox" x-model="fExpl" @change="load()"> Solo sfruttate attivamente</label>
+    </div>
+
+    <!-- lista -->
+    <template x-if="loading">
+      <div class="loading">Caricamento…</div>
+    </template>
+
+    <template x-if="!loading && items.length === 0">
+      <div class="empty">
+        <div class="big">✅</div>
+        <div>Nessuna vulnerabilità nota sui tuoi siti con i filtri attuali.</div>
+        <div style="font-size:13px;margin-top:8px">Ricorda: assenza di segnalazioni non è garanzia assoluta di sicurezza.</div>
+      </div>
+    </template>
+
+    <template x-for="it in items" :key="it.match_id">
+      <div class="row" :class="it.exploited?'expl':''">
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start">
+          <span class="sev" :class="it.severity" x-text="sevLabel(it.severity)"></span>
+          <template x-if="it.exploited"><span class="expl-badge">SFRUTTATA</span></template>
+        </div>
+        <div class="body">
+          <div class="site">
+            <span x-text="it.site_name"></span>
+            <span style="color:var(--mut);font-weight:400;font-size:13px" x-text="'· '+(it.cms==='wp'?'WordPress':'Joomla')"></span>
+          </div>
+          <div class="ext">
+            <span x-text="it.ext_name || it.ext_slug || '(estensione)'"></span>
+            <template x-if="it.site_version">
+              <span> — installata <code x-text="it.site_version"></code></span>
+            </template>
+          </div>
+          <div class="title" x-text="it.title"></div>
+          <div class="fix">
+            <template x-if="it.version_fixed">
+              <span>✅ Aggiorna a <span class="to" x-text="it.version_fixed"></span></span>
+            </template>
+            <template x-if="!it.version_fixed">
+              <span style="color:var(--warn)">⚠️ Nessun fix noto — valuta di disabilitare l'estensione</span>
+            </template>
+          </div>
+          <div class="meta">
+            <template x-if="it.cve_id"><span x-text="it.cve_id"></span></template>
+            <template x-if="it.cvss"><span x-text="'CVSS '+it.cvss.toFixed(1)"></span></template>
+            <span class="src" x-text="it.source"></span>
+            <template x-if="it.url"><a :href="it.url" target="_blank" rel="noopener">bollettino ↗</a></template>
+          </div>
+        </div>
+      </div>
+    </template>
+
+  </div>
+</div>
+
+<script>
+function sec(){
+  return {
+    summary:{}, items:[], loading:true, scanning:false, authErr:false,
+    fSev:'', fCms:'', fExpl:false,
+    tok(){ return localStorage.getItem('tdp_token') || ''; },
+    h(){ return {'Authorization':'Bearer '+this.tok(),'Content-Type':'application/json'}; },
+    async init(){
+      // se non c'e' proprio il token, torna alla home per il login
+      if(!this.tok()){ location.href='/'; return; }
+      await this.loadSummary();
+      await this.load();
+    },
+    async loadSummary(){
+      try{
+        const r = await fetch('/api/security/summary',{headers:this.h()});
+        if(r.status===401){ this.authErr=true; return; }
+        this.summary = await r.json();
+      }catch(e){}
+    },
+    async load(){
+      this.loading = true;
+      const p = new URLSearchParams();
+      if(this.fSev) p.set('severity',this.fSev);
+      if(this.fCms) p.set('cms',this.fCms);
+      if(this.fExpl) p.set('only_exploited','true');
+      try{
+        const r = await fetch('/api/security/matches?'+p.toString(),{headers:this.h()});
+        if(r.status===401){ this.authErr=true; this.loading=false; return; }
+        const d = await r.json();
+        this.items = d.items || [];
+      }catch(e){ this.items = []; }
+      this.loading = false;
+    },
+    async scanNow(){
+      this.scanning = true;
+      try{
+        await fetch('/api/security/scan-now',{method:'POST',headers:this.h()});
+        // la scansione gira nel worker; attendo un po' e ricarico
+        alert('Scansione avviata. I risultati compaiono tra qualche istante (dipende dal numero di siti e fonti). Ricarico tra 20 secondi.');
+        setTimeout(async ()=>{ await this.loadSummary(); await this.load(); this.scanning=false; }, 20000);
+      }catch(e){ this.scanning=false; alert('Errore nell\'avvio della scansione.'); }
+    },
+    sevLabel(s){ return {critical:'CRITICA',high:'ALTA',medium:'MEDIA',low:'BASSA',unknown:'?'}[s]||s; },
+    fmtDate(s){ if(!s) return ''; try{ return new Date(s).toLocaleString(I18n.locale); }catch(e){ return s; } }
+  };
+}
+</script>
+</body>
+</html>

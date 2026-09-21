@@ -1,0 +1,69 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-panopticon}
+      POSTGRES_USER: ${POSTGRES_USER:-panopticon}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes: [pg_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: [redis-server, --save, '', --appendonly, 'no', --maxmemory, 128mb, --maxmemory-policy, allkeys-lru]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+  shooter:
+    build: ./shooter
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-UTC}
+      SHOTS_DIR: /data/screenshots
+      SHOT_WIDTH: ${SHOT_WIDTH:-1280}
+      SHOT_HEIGHT: ${SHOT_HEIGHT:-800}
+      SHOT_QUALITY: ${SHOT_QUALITY:-72}
+      SHOT_THUMB_WIDTH: ${SHOT_THUMB_WIDTH:-360}
+      SHOT_TIMEOUT_MS: ${SHOT_TIMEOUT_MS:-25000}
+      SHOT_SETTLE_MS: ${SHOT_SETTLE_MS:-1800}
+      SHOT_VIDEO_WAIT_MS: ${SHOT_VIDEO_WAIT_MS:-6000}
+    volumes: [screenshots:/data/screenshots]
+  api:
+    build: ./api
+    restart: unless-stopped
+    env_file: .env
+    environment: &app-environment
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-panopticon}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-panopticon}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+    volumes:
+      - connectors:/data/connectors
+      - branding:/data/branding
+      - screenshots:/data/screenshots:ro
+    ports: ['${BIND_ADDRESS:-127.0.0.1}:${HOST_PORT:-8810}:8080']
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+  worker:
+    build: ./api
+    restart: unless-stopped
+    command: [arq, app.worker.WorkerSettings]
+    env_file: .env
+    environment: *app-environment
+    volumes: [branding:/data/branding:ro]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      shooter: {condition: service_started}
+volumes:
+  pg_data:
+  screenshots:
+  connectors:
+  branding:

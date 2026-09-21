@@ -1,0 +1,2463 @@
+<!DOCTYPE html>
+<html lang="it" data-project="panopticon-lite">
+
+<head>
+  <meta charset="utf-8">
+  <script src="/static/i18n/catalog.js"></script>
+  <script src="/static/i18n/i18n.js"></script>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panopticon · Tastiere Digitali</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png">
+  <link rel="apple-touch-icon" href="/static/favicon.png">
+  <script defer src="/static/vendor/alpine.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card: #1a1d24;
+      --card2: #161922;
+      --bd: #2a2f3a;
+      --txt: #e6e8ec;
+      --mut: #8b93a1;
+      --ok: #3ecf8e;
+      --warn: #f5a623;
+      --err: #ff5c5c;
+      --acc: #5b8cff
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      font: 14px/1.45 system-ui, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--txt)
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 13px 20px;
+      border-bottom: 1px solid var(--bd);
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 5
+    }
+
+    header .logo {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      background: var(--txt);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--bg);
+      font-weight: 700
+    }
+
+    .hdr-logo {
+      height: 32px;
+      width: auto;
+      max-width: 140px;
+      object-fit: contain;
+      display: block
+    }
+
+    header h1 {
+      font-size: 15px;
+      margin: 0;
+      font-weight: 600;
+      line-height: 1
+    }
+
+    header .sub {
+      font-size: 11px;
+      color: var(--mut)
+    }
+
+    .sp {
+      flex: 1
+    }
+
+    button {
+      cursor: pointer;
+      border: 1px solid var(--bd);
+      background: var(--card);
+      color: var(--txt);
+      border-radius: 8px;
+      padding: 7px 12px;
+      font-size: 13px;
+      transition: border-color .12s
+    }
+
+    button:hover {
+      border-color: var(--acc)
+    }
+
+    button.primary {
+      background: var(--acc);
+      border-color: var(--acc);
+      color: #fff
+    }
+
+    button.on {
+      background: var(--acc);
+      border-color: var(--acc);
+      color: #fff
+    }
+
+    button.danger {
+      color: var(--err);
+      border-color: #3a2630
+    }
+
+    button.ghost {
+      background: transparent
+    }
+
+    input,
+    select {
+      background: var(--card);
+      border: 1px solid var(--bd);
+      color: var(--txt);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+      width: 100%
+    }
+
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--acc)
+    }
+
+    .seg {
+      display: inline-flex;
+      border: 1px solid var(--bd);
+      border-radius: 8px;
+      overflow: hidden
+    }
+
+    .seg button {
+      border: none;
+      border-radius: 0;
+      padding: 7px 10px
+    }
+
+    .seg button.on {
+      background: var(--acc);
+      color: #fff
+    }
+
+    /* ---- toolbar ---- */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 20px;
+      flex-wrap: wrap
+    }
+
+    .search {
+      position: relative;
+      flex: 0 0 auto
+    }
+
+    .search input {
+      width: 210px;
+      padding-left: 30px
+    }
+
+    .search svg {
+      position: absolute;
+      left: 9px;
+      top: 50%;
+      transform: translateY(-50%);
+      opacity: .5
+    }
+
+    /* ---- metric cards ---- */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      padding: 0 20px 6px
+    }
+
+    .metric {
+      background: var(--card);
+      border: 1px solid var(--bd);
+      border-radius: 10px;
+      padding: 10px 14px
+    }
+
+    .metric .l {
+      font-size: 12px;
+      color: var(--mut)
+    }
+
+    .metric .n {
+      font-size: 22px;
+      font-weight: 600;
+      line-height: 1.2
+    }
+
+    /* ---- list view ---- */
+    .listwrap {
+      margin: 10px 20px 30px;
+      background: var(--card);
+      border: 1px solid var(--bd);
+      border-radius: 12px;
+      overflow: hidden
+    }
+
+    .lhead,
+    .lrow {
+      display: grid;
+      grid-template-columns: 16px 2.2fr 78px 110px 1.3fr 86px;
+      gap: 12px;
+      align-items: center;
+      padding: 11px 16px
+    }
+
+    .lhead {
+      border-bottom: 1px solid var(--bd);
+      font-size: 12px;
+      color: var(--mut)
+    }
+
+    .lrow {
+      border-bottom: 1px solid var(--bd);
+      cursor: pointer;
+      position: relative
+    }
+
+    .lrow:last-child {
+      border-bottom: none
+    }
+
+    .lrow:hover {
+      background: var(--card2)
+    }
+
+    /* sfondo riga + bordo sinistro colorato per stato */
+    .lrow.r-upd {
+      background: rgba(245, 166, 35, .06);
+      box-shadow: inset 3px 0 0 var(--warn)
+    }
+
+    .lrow.r-upd:hover {
+      background: rgba(245, 166, 35, .11)
+    }
+
+    .lrow.r-err {
+      background: rgba(224, 76, 76, .07);
+      box-shadow: inset 3px 0 0 var(--err)
+    }
+
+    .lrow.r-err:hover {
+      background: rgba(224, 76, 76, .12)
+    }
+
+    .lrow.r-ok {
+      box-shadow: inset 3px 0 0 var(--ok)
+    }
+
+    .lname {
+      font-weight: 600;
+      font-size: 14px
+    }
+
+    .lurl {
+      font-size: 12px;
+      color: var(--mut)
+    }
+
+    .dot {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      display: inline-block;
+      flex: 0 0 auto;
+      border: 2px solid transparent
+    }
+
+    .ok {
+      background: var(--ok);
+      box-shadow: 0 0 0 3px rgba(60, 200, 120, .18)
+    }
+
+    .err {
+      background: var(--err);
+      box-shadow: 0 0 0 3px rgba(224, 76, 76, .20)
+    }
+
+    .unk {
+      background: var(--mut)
+    }
+
+    /* badge stato testuale */
+    .sbadge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 20px;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px
+    }
+
+    .sbadge::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor
+    }
+
+    .sb-ok {
+      background: rgba(60, 200, 120, .14);
+      color: var(--ok)
+    }
+
+    .sb-err {
+      background: rgba(224, 76, 76, .16);
+      color: var(--err)
+    }
+
+    .sb-upd {
+      background: rgba(245, 166, 35, .16);
+      color: var(--warn)
+    }
+
+    .sb-unk {
+      background: var(--card2);
+      color: var(--mut)
+    }
+
+    .badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--bd);
+      white-space: nowrap
+    }
+
+    .b-wp {
+      color: #4aa3df;
+      border-color: #27566f
+    }
+
+    .b-joomla {
+      color: #f5a623;
+      border-color: #5e4a1e
+    }
+
+    .pill {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      white-space: nowrap
+    }
+
+    .pill.w {
+      background: #3a2f17;
+      color: var(--warn)
+    }
+
+    .pill.k {
+      background: #3a2226;
+      color: var(--err)
+    }
+
+    .pill.g {
+      background: #16291f;
+      color: var(--ok)
+    }
+
+    .vup {
+      color: var(--warn);
+      font-weight: 600
+    }
+
+    .vok {
+      color: var(--ok)
+    }
+
+    .lact {
+      display: flex;
+      gap: 5px;
+      justify-content: flex-end
+    }
+
+    .lact button {
+      padding: 5px 8px;
+      line-height: 1
+    }
+
+    .mut {
+      color: var(--mut);
+      font-size: 12px
+    }
+
+    /* filtri */
+    .filters {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center
+    }
+
+    .filters button {
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--card);
+      border: 1px solid var(--bd);
+      color: var(--mut);
+      cursor: pointer
+    }
+
+    .filters button.on {
+      background: var(--acc);
+      border-color: var(--acc);
+      color: #fff
+    }
+
+    .filters .fcount {
+      font-size: 11px;
+      opacity: .7;
+      margin-left: 3px
+    }
+
+    /* ---- tag / cartelle ---- */
+    .tagbar {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+      padding: 0 20px 6px
+    }
+
+    .tagbar .lbl {
+      font-size: 11px;
+      color: var(--mut);
+      margin-right: 2px
+    }
+
+    .tchip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--card);
+      border: 1px solid var(--bd);
+      color: var(--txt);
+      cursor: pointer
+    }
+
+    .tchip .c {
+      font-size: 11px;
+      opacity: .6
+    }
+
+    .tchip.on {
+      background: var(--acc);
+      border-color: var(--acc);
+      color: #fff
+    }
+
+    .tchip.on .c {
+      opacity: .85
+    }
+
+    /* tag piccoli mostrati sotto il nome del sito */
+    .tags-mini {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin-top: 3px
+    }
+
+    .tmini {
+      font-size: 10px;
+      padding: 1px 7px;
+      border-radius: 10px;
+      background: var(--card2);
+      border: 1px solid var(--bd);
+      color: var(--mut);
+      cursor: pointer;
+      line-height: 1.5
+    }
+
+    .tmini:hover {
+      color: var(--acc);
+      border-color: var(--acc)
+    }
+
+    /* barra azioni selezione multipla */
+    .selbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 0 20px 8px;
+      padding: 9px 14px;
+      background: rgba(91, 140, 255, .1);
+      border: 1px solid var(--acc);
+      border-radius: 10px
+    }
+
+    .selbar .cnt {
+      font-weight: 600
+    }
+
+    .selbar .sp {
+      flex: 1
+    }
+
+    /* checkbox riga lista al posto del dot */
+    .selck {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--acc);
+      cursor: pointer
+    }
+
+    /* checkbox overlay sulla card */
+    .card .selovl {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      z-index: 3;
+      width: 20px;
+      height: 20px;
+      accent-color: var(--acc);
+      cursor: pointer
+    }
+
+    .card.selon {
+      cursor: pointer
+    }
+
+    .card.selpick {
+      outline: 2px solid var(--acc);
+      outline-offset: -2px
+    }
+
+    /* datalist input dei tag nei form */
+    .taginput {
+      width: 100%
+    }
+
+    /* ---- card view ---- */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+      gap: 16px;
+      padding: 10px 20px 30px
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--bd);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative
+    }
+
+    .shot {
+      aspect-ratio: 16/9;
+      background: #000 center/cover no-repeat;
+      cursor: pointer;
+      position: relative;
+      border-bottom: 1px solid var(--bd)
+    }
+
+    .shot .ph {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--mut);
+      font-size: 12px
+    }
+
+    .cbody {
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .counts {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      font-size: 12px
+    }
+
+    .chip {
+      border: 1px solid var(--bd);
+      border-radius: 6px;
+      padding: 2px 7px
+    }
+
+    .chip.w {
+      border-color: var(--warn);
+      color: var(--warn)
+    }
+
+    .actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+      flex-wrap: wrap
+    }
+
+    .actions button {
+      flex: 1;
+      padding: 6px 8px;
+      font-size: 12px
+    }
+
+    /* ---- modal ---- */
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 10
+    }
+
+    .modal .panel {
+      background: var(--card);
+      border: 1px solid var(--bd);
+      border-radius: 12px;
+      padding: 22px;
+      width: 100%;
+      max-width: 560px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 90vh;
+      overflow: auto
+    }
+
+    .panel h2 {
+      margin: 0;
+      font-size: 17px
+    }
+
+    label {
+      font-size: 12px;
+      color: var(--mut);
+      display: block;
+      margin-bottom: 4px
+    }
+
+    .tok {
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-size: 12px;
+      background: #0d0f13;
+      border: 1px solid var(--bd);
+      border-radius: 6px;
+      padding: 8px;
+      word-break: break-all
+    }
+
+    .grp {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--mut);
+      margin-top: 10px;
+      border-top: 1px solid var(--bd);
+      padding-top: 8px
+    }
+
+    .grp-acc {
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none
+    }
+
+    .grp-acc:hover {
+      color: var(--txt)
+    }
+
+    .grp-meta {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      text-transform: none;
+      letter-spacing: 0
+    }
+
+    .extrow {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 3px 0;
+      font-size: 12px
+    }
+
+    .extrow .v {
+      font-family: ui-monospace, Menlo, Consolas, monospace
+    }
+
+    /* ---- login ---- */
+    .login {
+      max-width: 360px;
+      margin: 13vh auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px
+    }
+
+    .login .box {
+      background: var(--card);
+      border: 1px solid var(--bd);
+      border-radius: 14px;
+      padding: 26px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px
+    }
+
+    .login .logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 11px;
+      background: var(--txt);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--bg);
+      font-weight: 700;
+      font-size: 22px;
+      margin: 0 auto
+    }
+
+    .login-logo {
+      max-width: 170px;
+      max-height: 80px;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      margin: 0 auto;
+      display: block
+    }
+
+    .login h2 {
+      margin: 0;
+      text-align: center;
+      font-size: 18px
+    }
+
+    .login .hint {
+      font-size: 12px;
+      color: var(--mut);
+      text-align: center
+    }
+
+    .err-msg {
+      color: var(--err);
+      font-size: 13px;
+      text-align: center
+    }
+
+    .ok-msg {
+      color: var(--ok);
+      font-size: 13px;
+      text-align: center
+    }
+
+    .qr {
+      background: #fff;
+      border-radius: 10px;
+      padding: 14px;
+      width: 200px;
+      margin: 0 auto
+    }
+
+    .qr svg {
+      width: 100%;
+      height: auto;
+      display: block
+    }
+
+    .method-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 8px
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--mut);
+      font-size: 12px
+    }
+
+    .divider::before,
+    .divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--bd)
+    }
+
+    .codeinput {
+      font-size: 22px;
+      letter-spacing: .3em;
+      text-align: center;
+      font-family: ui-monospace, monospace
+    }
+
+    /* ============================================================
+       RESPONSIVE MOBILE (<= 640px)
+       ============================================================ */
+    @media (max-width: 640px) {
+      /* --- HEADER: logo piu' piccolo, testo compatto, pulsanti a scorrimento --- */
+      header {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px 12px;
+        row-gap: 8px;
+      }
+      .hdr-logo { height: 26px; max-width: 110px; }
+      header h1 { font-size: 14px; }
+      header .sub { font-size: 11px; }
+      /* i pulsanti header vanno su una riga propria, scrollabile in orizzontale */
+      header .sp { display: none; }
+      .hdr-btn {
+        font-size: 12px !important;
+        padding: 7px 10px !important;
+        white-space: nowrap;
+      }
+      /* wrapper implicito: i bottoni finiscono a capo e riempiono la larghezza */
+      header > .hdr-btn { flex: 0 0 auto; }
+
+      /* --- TOOLBAR: ricerca a tutta larghezza, controlli sotto --- */
+      .toolbar {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px 12px;
+      }
+      .toolbar .search { flex: 1 1 100%; }
+      .toolbar .search input { width: 100%; }
+
+      /* --- METRICHE: 2 colonne invece di 4 --- */
+      .metrics {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px;
+        padding: 0 12px;
+      }
+      .metric { padding: 12px !important; }
+      .metric .n { font-size: 22px !important; }
+
+      /* --- FILTRI: scroll orizzontale invece di andare a capo caotico --- */
+      .filters, .tagbar {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 4px;
+        scrollbar-width: none;
+      }
+      .filters::-webkit-scrollbar, .tagbar::-webkit-scrollbar { display: none; }
+      .filters > button, .tagbar > .tchip { flex: 0 0 auto; }
+      /* segmento Lista/Card e pulsanti toolbar: non stringere troppo */
+      .seg { flex: 0 0 auto; }
+
+      /* --- LISTA: da griglia rigida a blocco leggibile su mobile --- */
+      .lhead { display: none; }
+      .lrow {
+        display: flex !important;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 10px;
+        padding: 12px 14px;
+      }
+      /* dot/checkbox: dimensione fissa */
+      .lrow > :nth-child(1) { flex: 0 0 auto; }
+      /* blocco nome: prende lo spazio, spinge le azioni a destra */
+      .lrow > :nth-child(2) { flex: 1 1 auto; min-width: 0; }
+      .lrow .lname { white-space: normal; }
+      /* azioni (⟳ ↗): restano in alto a destra sulla prima riga */
+      .lrow > .lact { flex: 0 0 auto; order: 3; }
+      /* cms + core + update badge: vanno a capo tutti insieme sulla riga sotto */
+      .lrow > :nth-child(3),
+      .lrow > :nth-child(4),
+      .lrow > :nth-child(5) {
+        order: 4;
+        flex: 0 0 auto;
+      }
+      /* forza l'a-capo prima dei badge meta: uno spacer invisibile a larghezza piena */
+      .lrow > :nth-child(3)::before {
+        content: "";
+        display: block;
+        width: 100vw;
+        height: 0;
+      }
+
+      /* container centrale: meno padding laterale su mobile */
+      .listwrap { margin: 10px 10px 20px; }
+
+      /* modali: quasi fullscreen su mobile */
+      .panel {
+        max-width: 94vw !important;
+        margin: 4vh auto !important;
+        padding: 18px !important;
+      }
+    }
+
+    /* schermi molto stretti (<=380px): metriche a 2 col ma piu' strette */
+    @media (max-width: 380px) {
+      .hdr-btn { font-size: 11px !important; padding: 6px 8px !important; }
+      .metric .n { font-size: 20px !important; }
+    }
+    /* ===== pagine cartella / panoramica ===== */
+    .pagehead { display:flex; align-items:center; gap:14px; padding:12px 20px 0; flex-wrap:wrap; }
+    .pagehead h2 { margin:0; font-size:20px; }
+    .pagehead .phs { font-size:13px; color:var(--txt); background:var(--panel); border:1px solid var(--bd);
+      border-radius:8px; padding:4px 10px; }
+    .pagehead .phs.warn { color:var(--warn); border-color:#5e4a1e; }
+    .pagehead .phs.err { color:var(--err); border-color:#5e2a2a; }
+    .pagehead .phs.mut, .pagehead .phs .mut { color:var(--mut); }
+    .ovwrap { padding:16px 20px 30px; }
+    .ovtot { display:flex; gap:18px; align-items:baseline; flex-wrap:wrap; padding:14px 18px; margin-bottom:16px;
+      background:var(--panel); border:1px solid var(--bd); border-radius:12px; }
+    .ovtot .t { font-size:18px; }
+    .ovtot .s { font-size:13px; }
+    .ovtot .warn { color:var(--warn); } .ovtot .err { color:var(--err); } .ovtot .ok { color:var(--ok); } .ovtot .mut { color:var(--mut); }
+    .ovgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:14px; }
+    .ovcard { background:var(--panel); border:1px solid var(--bd); border-radius:12px; padding:14px 16px;
+      cursor:pointer; transition:border-color .15s, transform .05s; border-left:3px solid var(--bd); }
+    .ovcard:hover { border-color:var(--acc); }
+    .ovcard:active { transform:scale(.99); }
+    .ovcard.has-upd { border-left-color:var(--warn); }
+    .ovcard.has-off { border-left-color:var(--err); }
+    .ovcard .nm { font-weight:600; font-size:15px; margin-bottom:6px; }
+    .ovcard .cnt { font-size:13px; margin-bottom:4px; }
+    .ovcard .row { font-size:12.5px; }
+    .ovcard .warn { color:var(--warn); } .ovcard .err { color:var(--err); } .ovcard .ok { color:var(--ok); } .ovcard .mut { color:var(--mut); }
+    /* ===== modale connettori ===== */
+    .connrow { display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--bd); }
+    .connrow:last-of-type { border-bottom:none; }
+    .connrow .ic { width:38px; height:38px; border-radius:9px; background:var(--bg); border:1px solid var(--bd);
+      display:flex; align-items:center; justify-content:center; font-weight:700; color:var(--acc); }
+    .connrow .inf { flex:1; min-width:0; }
+    .connrow .nm { font-weight:600; font-size:14px; }
+    .connrow .mut { font-size:12.5px; color:var(--mut); }
+    .btn-like { display:inline-flex; align-items:center; gap:6px; padding:7px 12px; border-radius:8px;
+      border:1px solid var(--bd); background:var(--panel); color:var(--txt); font-size:13px; cursor:pointer;
+      text-decoration:none; white-space:nowrap; }
+    .btn-like:hover { border-color:var(--acc); }
+    .btn-like.dis { opacity:.5; pointer-events:none; }
+  </style>
+
+  <link rel="stylesheet" href="/static/i18n/i18n.css">
+</head>
+
+<body x-data="app()" x-init="init()">
+
+  <!-- suggerimenti tag globali (usati da modale tag, edit e add) -->
+  <datalist id="tagsuggest">
+    <template x-for="t in allTags" :key="t.name">
+      <option :value="t.name"></option>
+    </template>
+  </datalist>
+
+  <!-- ============ LOGIN ============ -->
+  <template x-if="!token">
+    <div class="login">
+      <div class="box">
+        <img src="/static/logo.png" alt="Tastiere Digitali" class="login-logo">
+        <h2>Panopticon</h2>
+        <div class="hint mut" style="text-align:center;margin-top:-8px">Tastiere Digitali</div>
+
+        <!-- step password -->
+        <template x-if="step==='pwd'">
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="hint">Accedi al pannello</div>
+            <div>
+              <label>Nome utente</label>
+              <input type="text" x-model="user" @keydown.enter="login()" autocomplete="username" autofocus>
+            </div>
+            <div>
+              <label>Password</label>
+              <input type="password" x-model="pwd" @keydown.enter="login()" autocomplete="current-password">
+            </div>
+            <button class="primary" @click="login()">Entra</button>
+          </div>
+        </template>
+
+        <!-- step 2fa -->
+        <template x-if="step==='2fa'">
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div class="hint">Verifica in due passaggi</div>
+
+            <template x-if="methods.includes('passkey')">
+              <button class="primary" @click="loginPasskey()">
+                Usa passkey / biometria
+              </button>
+            </template>
+
+            <template x-if="methods.includes('passkey') && methods.includes('totp')">
+              <div class="divider">oppure</div>
+            </template>
+
+            <template x-if="methods.includes('totp')">
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div>
+                  <label>Codice dall'app Authenticator</label>
+                  <input class="codeinput" inputmode="numeric" maxlength="6" x-model="code"
+                    @keydown.enter="verifyTotp()" placeholder="000000">
+                </div>
+                <button class="primary" @click="verifyTotp()">Verifica</button>
+              </div>
+            </template>
+          </div>
+        </template>
+
+        <div class="err-msg" x-show="err" x-text="err"></div>
+      </div>
+    </div>
+  </template>
+
+  <!-- ============ APP ============ -->
+  <template x-if="token">
+    <div>
+      <header>
+        <img src="/static/logo.png" alt="" class="hdr-logo">
+        <div>
+          <h1>Panopticon</h1>
+          <div class="sub"><span style="color:var(--mut)">Tastiere Digitali</span> · <span
+              x-text="sites.length+' siti monitorati'"></span></div>
+        </div>
+        <div class="sp"></div>
+        <button class="ghost hdr-btn" @click="massUpdate()" :disabled="massBusy" title="Aggiorna subito i siti con update pending">
+          <span x-show="!massBusy">⬆ Aggiorna tutto</span>
+          <span x-show="massBusy">Avvio…</span>
+        </button>
+        <button class="ghost hdr-btn" @click="refreshAll()" title="Controlla tutti">Check tutti</button>
+        <button class="ghost hdr-btn" @click="openInstall()" title="Installa plugin/tema sui siti">Installa</button>
+        <button class="ghost hdr-btn" @click="openConn()" title="Scarica o aggiorna i connettori Joomla e WordPress">Connettori</button>
+        <button class="ghost hdr-btn" @click="location.href='/security'" title="Centro Sicurezza — vulnerabilità note sui tuoi siti"
+                :style="secBell ? 'border-color:var(--err);color:var(--err)' : ''">
+          <span x-show="secBell">🔔</span><span x-show="!secBell">🛡️</span> Sicurezza
+        </button>
+        <button class="ghost hdr-btn" @click="show2fa=true" title="2FA e accesso">2FA</button>
+        <button class="ghost hdr-btn" @click="logout()">Esci</button>
+      </header>
+
+      <!-- banner setup 2fa -->
+      <template x-if="needs2faSetup">
+        <div
+          style="margin:14px 20px 0;padding:12px 16px;background:#3a2f17;border:1px solid #5e4a1e;border-radius:10px;display:flex;align-items:center;gap:12px">
+          <span style="color:var(--warn);font-weight:600">Il 2FA non è attivo.</span>
+          <span class="mut">Proteggi l'accesso con Authenticator o una passkey.</span>
+          <div class="sp"></div>
+          <button class="primary" @click="show2fa=true">Configura ora</button>
+        </div>
+      </template>
+
+      <!-- barra viste: panoramica cartelle / tutti i siti / pagina cartella corrente -->
+      <div class="toolbar" style="padding-bottom:0">
+        <div class="seg">
+          <button :class="page==='ov'?'on':''" @click="setPage('ov')">🗂 Panoramica</button>
+          <button :class="page===null?'on':''" @click="setPage(null)">Tutti i siti</button>
+          <template x-if="page && page!=='ov'">
+            <button class="on" x-text="'📁 '+pageTitle"></button>
+          </template>
+        </div>
+      </div>
+
+      <!-- header pagina cartella -->
+      <template x-if="page && page!=='ov'">
+        <div class="pagehead">
+          <button class="ghost" @click="setPage('ov')">← Cartelle</button>
+          <h2 x-text="pageTitle"></h2>
+          <span class="phs"><b x-text="pageStats.count"></b> siti</span>
+          <span class="phs warn" x-show="pageStats.upd"><b x-text="pageStats.upd"></b> con update (<span x-text="pageStats.updTot"></span> tot)</span>
+          <span class="phs err" x-show="pageStats.off"><b x-text="pageStats.off"></b> offline</span>
+          <span class="phs mut"><span x-text="pageStats.wp"></span> WP · <span x-text="pageStats.joomla"></span> Joomla</span>
+        </div>
+      </template>
+
+      <div class="toolbar" x-show="page!=='ov'">
+        <div class="search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <input placeholder="Cerca sito…" x-model="q">
+        </div>
+        <div class="seg">
+          <button :class="view==='list'?'on':''" @click="setView('list')" title="Lista">Lista</button>
+          <button :class="view==='cards'?'on':''" @click="setView('cards')" title="Card">Card</button>
+        </div>
+        <div class="sp"></div>
+        <button @click="toggleSelMode()" :class="selMode?'primary':''" x-text="selMode?'✕ Esci selezione':'☑ Seleziona'"></button>
+        <button class="primary" @click="showAdd=true">+ Nuovo sito</button>
+      </div>
+
+      <!-- filtri rapidi -->
+      <div class="toolbar" style="padding-top:0" x-show="page!=='ov'">
+        <div class="filters">
+          <button :class="flt==='all'?'on':''" @click="flt='all'">Tutti<span class="fcount"
+              x-text="page&&page!=='ov'?pageStats.count:sites.length"></span></button>
+          <button :class="flt==='upd'?'on':''" @click="flt='upd'">Con update<span class="fcount"
+              x-text="page&&page!=='ov'?pageStats.upd:mUpd"></span></button>
+          <button :class="flt==='off'?'on':''" @click="flt='off'">Offline<span class="fcount"
+              x-text="page&&page!=='ov'?pageStats.off:mErr"></span></button>
+          <button :class="flt==='wp'?'on':''" @click="flt='wp'">WordPress<span class="fcount"
+              x-text="page&&page!=='ov'?pageStats.wp:sites.filter(s=>s.cms==='wp').length"></span></button>
+          <button :class="flt==='joomla'?'on':''" @click="flt='joomla'">Joomla<span class="fcount"
+              x-text="page&&page!=='ov'?pageStats.joomla:sites.filter(s=>s.cms==='joomla').length"></span></button>
+        </div>
+      </div>
+
+      <!-- chip tag / cartelle (solo nella vista "tutti i siti") -->
+      <template x-if="allTags.length && !page">
+        <div class="tagbar">
+          <span class="lbl">Cartelle:</span>
+          <span class="tchip" :class="tagFilter===''?'on':''" @click="tagFilter=''">Tutte</span>
+          <template x-for="t in allTags" :key="t.name">
+            <span class="tchip" :class="tagFilter.toLowerCase()===t.name.toLowerCase()?'on':''"
+              @click="toggleTagFilter(t.name)">
+              <span x-text="t.name"></span><span class="c" x-text="t.count"></span>
+            </span>
+          </template>
+        </div>
+      </template>
+
+      <!-- barra azioni selezione multipla -->
+      <template x-if="selMode">
+        <div class="selbar">
+          <span class="cnt" x-text="selIds.length + ' selezionati'"></span>
+          <button @click="selectAllFiltered()" x-text="allFilteredSelected?'Deseleziona tutti':'Seleziona tutti'"></button>
+          <span class="sp"></span>
+          <button class="primary" :disabled="!selIds.length || massBusy" @click="massUpdateSelected()">
+            <span x-show="!massBusy">⬆ Aggiorna selezionati</span>
+            <span x-show="massBusy">Avvio…</span>
+          </button>
+          <button :disabled="!selIds.length" @click="openTagModal('add')">+ Aggiungi tag</button>
+          <button class="danger" :disabled="!selIds.length" @click="openTagModal('remove')">− Rimuovi tag</button>
+        </div>
+      </template>
+
+      <!-- ============ PANORAMICA CARTELLE ============ -->
+      <template x-if="page==='ov'">
+        <div class="ovwrap">
+          <div class="ovtot">
+            <div class="t"><b x-text="totStats.count"></b> siti totali</div>
+            <div class="s warn" x-show="totStats.upd"><b x-text="totStats.upd"></b> con update · <span x-text="totStats.updTot"></span> aggiornamenti pendenti</div>
+            <div class="s ok" x-show="!totStats.upd">Tutto aggiornato</div>
+            <div class="s err" x-show="totStats.off"><b x-text="totStats.off"></b> offline</div>
+            <div class="s mut"><span x-text="totStats.wp"></span> WordPress · <span x-text="totStats.joomla"></span> Joomla</div>
+          </div>
+          <div class="ovgrid">
+            <template x-for="t in tagStats" :key="t.key">
+              <div class="ovcard" :class="t.off?'has-off':(t.upd?'has-upd':'')" @click="setPage(t.key)">
+                <div class="nm">📁 <span x-text="t.name"></span></div>
+                <div class="cnt"><b x-text="t.count"></b> siti <span class="mut">(<span x-text="t.wp"></span> WP · <span x-text="t.joomla"></span> J)</span></div>
+                <div class="row warn" x-show="t.upd"><b x-text="t.upd"></b> con update · <span x-text="t.updTot"></span> agg. pendenti</div>
+                <div class="row ok" x-show="!t.upd && !t.off">Tutto ok</div>
+                <div class="row err" x-show="t.off"><b x-text="t.off"></b> offline</div>
+              </div>
+            </template>
+            <template x-if="!tagStats.length">
+              <div class="mut" style="padding:20px">Nessuna cartella: assegna dei tag ai siti (Seleziona → + Aggiungi tag) e qui compariranno le cartelle.</div>
+            </template>
+          </div>
+        </div>
+      </template>
+
+      <!-- metriche -->
+      <div class="metrics" x-show="page!=='ov'">
+        <div class="metric">
+          <div class="l">Siti OK</div>
+          <div class="n" style="color:var(--ok)" x-text="mOk"></div>
+        </div>
+        <div class="metric">
+          <div class="l">Con update</div>
+          <div class="n" style="color:var(--warn)" x-text="mUpd"></div>
+        </div>
+        <div class="metric">
+          <div class="l">Offline</div>
+          <div class="n" style="color:var(--err)" x-text="mErr"></div>
+        </div>
+        <div class="metric">
+          <div class="l">Auto-update</div>
+          <div class="n" x-text="mAuto"></div>
+        </div>
+      </div>
+
+      <!-- ===== LISTA ===== -->
+      <template x-if="view==='list' && page!=='ov'">
+        <div class="listwrap">
+          <div class="lhead">
+            <div></div>
+            <div>Sito</div>
+            <div>CMS</div>
+            <div>Core</div>
+            <div>Aggiornamenti</div>
+            <div style="text-align:right">Azioni</div>
+          </div>
+          <template x-for="s in filtered" :key="s.id">
+            <div class="lrow" :class="[rowClass(s), (selMode && isSel(s.id))?'r-ok':'']" @click="rowClick(s)">
+              <template x-if="selMode">
+                <input type="checkbox" class="selck" :checked="isSel(s.id)" @click.stop="toggleSel(s.id)">
+              </template>
+              <template x-if="!selMode">
+                <div class="dot" :class="dotClass(s)" :title="statusLabel(s)"></div>
+              </template>
+              <div>
+                <div class="lname" x-text="s.name"></div>
+                <div class="lurl" x-text="hostOf(s.url)"></div>
+                <template x-if="siteTags(s).length">
+                  <div class="tags-mini">
+                    <template x-for="t in siteTags(s)" :key="t">
+                      <span class="tmini" x-text="t" @click.stop="tagFilter=t"></span>
+                    </template>
+                  </div>
+                </template>
+              </div>
+              <div><span class="badge" :class="s.cms==='wp'?'b-wp':'b-joomla'"
+                  x-text="s.cms==='wp'?'WP':'Joomla'"></span></div>
+              <div>
+                <span :class="s.core_update?'vup':'vok'" x-text="(s.core_update?'↑ ':'')+(s.core_current||'—')"></span>
+              </div>
+              <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                <template x-if="s.status && s.status!=='ok'"><span class="sbadge sb-err">Offline</span></template>
+                <template x-if="!s.status"><span class="sbadge sb-unk">mai controllato</span></template>
+                <template x-if="s.status==='ok' && updTotal(s)>0"><span class="sbadge sb-upd"
+                    x-text="updTotal(s)+' update'"></span></template>
+                <template x-if="s.status==='ok' && updTotal(s)===0"><span class="sbadge sb-ok">OK</span></template>
+              </div>
+              <div class="lact" @click.stop>
+                <button @click="refresh(s)" title="Check">⟳</button>
+                <button @click="goAdmin(s)" title="Admin">↗</button>
+              </div>
+            </div>
+          </template>
+          <template x-if="filtered.length===0">
+            <div style="padding:30px;text-align:center" class="mut">Nessun sito.</div>
+          </template>
+        </div>
+      </template>
+
+      <!-- ===== CARD ===== -->
+      <template x-if="view==='cards' && page!=='ov'">
+        <div class="grid">
+          <template x-for="s in filtered" :key="s.id">
+            <div class="card" :class="[selMode?'selon':'', (selMode && isSel(s.id))?'selpick':'']">
+              <template x-if="selMode">
+                <input type="checkbox" class="selovl" :checked="isSel(s.id)" @click.stop="toggleSel(s.id)">
+              </template>
+              <div class="shot" @click="selMode ? toggleSel(s.id) : detail(s)"
+                :style="s.shot_path ? `background-image:url(/api/sites/${s.id}/image?t=${s.shot_at}&k=${imageToken})` : ''">
+                <template x-if="!s.shot_path">
+                  <div class="ph">nessuno screenshot</div>
+                </template>
+              </div>
+              <div class="cbody">
+                <div class="row">
+                  <span class="dot" :class="dotClass(s)"></span>
+                  <span class="lname" x-text="s.name"></span>
+                  <div class="sp"></div>
+                  <span class="badge" :class="s.cms==='wp'?'b-wp':'b-joomla'"
+                    x-text="s.cms==='wp'?'WP':'Joomla'"></span>
+                </div>
+                <div class="lurl" x-text="hostOf(s.url)"></div>
+                <template x-if="siteTags(s).length">
+                  <div class="tags-mini">
+                    <template x-for="t in siteTags(s)" :key="t">
+                      <span class="tmini" x-text="t" @click.stop="tagFilter=t"></span>
+                    </template>
+                  </div>
+                </template>
+                <div class="row" style="gap:6px">
+                  <span :class="s.core_update?'vup':'vok'"
+                    x-text="'core '+(s.core_current||'—')+(s.core_update?' ↑':' ✓')"></span>
+                  <div class="sp"></div>
+                  <template x-if="updTotal(s)>0"><span class="pill w" x-text="updTotal(s)+' update'"></span></template>
+                </div>
+                <div class="actions">
+                  <button @click="refresh(s)">Check</button>
+                  <button @click="shoot(s)">Shot</button>
+                  <button @click="goAdmin(s)">Admin</button>
+                  <button @click="detail(s)">Dettagli</button>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
+
+    </div>
+  </template>
+
+  <!-- ============ MODALE TAG / CARTELLE ============ -->
+  <template x-if="tagModal">
+    <div class="modal" @click.self="tagModal=null" @keydown.escape.window="tagModal=null">
+      <div class="panel" style="max-width:460px">
+        <div class="row">
+          <h2 x-text="tagModal==='add' ? 'Aggiungi tag' : 'Rimuovi tag'"></h2>
+          <div class="sp"></div>
+          <button @click="tagModal=null">✕</button>
+        </div>
+        <div class="mut" x-text="selIds.length + ' siti selezionati'"></div>
+
+        <template x-if="tagModal==='add'">
+          <div style="margin-top:12px">
+            <label>Tag (separa con virgola per più tag)</label>
+            <input class="taginput" x-model="tagInput" list="tagsuggest"
+              placeholder="es. clienteRossi, fascia1, onprem" @keydown.enter="applyTags()">
+            <div class="mut" style="margin-top:6px">I tag esistenti compaiono come suggerimenti mentre digiti.</div>
+          </div>
+        </template>
+
+        <template x-if="tagModal==='remove'">
+          <div style="margin-top:12px">
+            <label>Seleziona i tag da rimuovere dai siti selezionati</label>
+            <div class="tagbar" style="padding:8px 0">
+              <template x-if="!allTags.length"><span class="mut">Nessun tag presente.</span></template>
+              <template x-for="t in allTags" :key="t.name">
+                <span class="tchip" :class="rmTags.some(x=>x.toLowerCase()===t.name.toLowerCase())?'on':''"
+                  @click="toggleRmTag(t.name)" x-text="t.name"></span>
+              </template>
+            </div>
+          </div>
+        </template>
+
+        <div class="err-msg" x-show="tagErr" x-text="tagErr"></div>
+        <div class="ok-msg" x-show="tagMsg" x-text="tagMsg"></div>
+
+        <div class="row" style="gap:8px;margin-top:14px">
+          <div class="sp"></div>
+          <button @click="tagModal=null">Annulla</button>
+          <button class="primary" :disabled="tagBusy" @click="applyTags()"
+            x-text="tagModal==='add' ? 'Aggiungi' : 'Rimuovi'"></button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- ============ MODALE DETTAGLI ============ -->
+  <template x-if="sel">
+    <div class="modal" @click.self="sel=null" @keydown.escape.window="sel=null">
+      <div class="panel">
+        <div class="row">
+          <h2 x-text="sel.name"></h2>
+          <div class="sp"></div>
+          <button @click="sel=null">✕</button>
+        </div>
+        <div class="lurl" x-text="sel.url"></div>
+        <div class="row" style="gap:8px;flex-wrap:wrap">
+          <span class="badge" :class="sel.cms==='wp'?'b-wp':'b-joomla'"
+            x-text="sel.cms==='wp'?'WordPress':'Joomla'"></span>
+          <span :class="sel.core_update?'vup':'vok'" x-text="'core '+(sel.core_current||'—')"></span>
+          <span class="mut" x-text="'PHP '+(sel.php_version||'?')"></span>
+        </div>
+        <div class="row" style="gap:6px">
+          <button @click="refresh(sel)">Check ora</button>
+          <button @click="shoot(sel)">Screenshot</button>
+          <button @click="goAdmin(sel)">Admin</button>
+          <button @click="openEdit(sel)">Modifica</button>
+          <div class="sp"></div>
+          <button class="danger" @click="del(sel)">Elimina</button>
+        </div>
+
+        <template x-for="g in groups(sel.extensions)" :key="g.title">
+          <div>
+            <div class="grp grp-acc" @click="toggleGrp(g.title)">
+              <span x-text="g.title"></span>
+              <span class="grp-meta">
+                <template x-if="g.updcount>0"><span class="pill w" x-text="g.updcount+' update'"></span></template>
+                <span class="mut" x-text="g.items.length"></span>
+                <span x-text="openGrps.includes(g.title)?'▾':'▸'"></span>
+              </span>
+            </div>
+            <template x-if="openGrps.includes(g.title)">
+              <div style="padding:4px 0">
+                <template x-for="x in g.items" :key="x.type+x.slug">
+                  <div class="extrow">
+                    <span>
+                      <span x-text="x.name"></span>
+                      <br>
+                      <span class="mut" style="font-size:11px;font-family:ui-monospace,monospace;cursor:pointer"
+                        @click.stop="copy(x.slug)" :title="'Copia slug: '+x.slug"
+                        x-text="x.slug"></span>
+                    </span>
+                    <span class="v">
+                      <template x-if="x.update_available">
+                        <span class="vup" x-text="x.current_version+' → '+x.new_version"></span>
+                      </template>
+                      <template x-if="!x.update_available">
+                        <span class="mut" x-text="x.current_version"></span>
+                      </template>
+                      <template x-if="x.dlkey_missing"><span class="pill k" style="margin-left:6px">no
+                          key</span></template>
+                    </span>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+    </div>
+  </template>
+
+  <!-- ============ MODALE MODIFICA ============ -->
+  <template x-if="edit">
+    <div class="modal" style="z-index:20">
+      <div class="panel">
+        <div class="row">
+          <h2>Modifica sito</h2>
+          <div class="sp"></div>
+          <button @click="edit=null">✕</button>
+        </div>
+        <div><label>Nome</label><input x-model="edit.name"></div>
+        <div><label>URL (senza slash finale)</label><input x-model="edit.url"></div>
+        <div><label>CMS</label>
+          <select x-model="edit.cms">
+            <option value="wp">WordPress</option>
+            <option value="joomla">Joomla</option>
+          </select>
+        </div>
+        <div><label>URL admin (es. login custom)</label><input x-model="edit.admin_url"
+            placeholder="vuoto = /administrator o /wp-admin"></div>
+        <div><label>Token</label><input x-model="edit.token"></div>
+        <div><label>Gruppo</label><input x-model="edit.group"></div>
+        <div><label>Tag / cartelle (separa con virgola)</label>
+          <input class="taginput" x-model="edit.tags" list="tagsuggest" placeholder="es. clienteRossi, fascia1"></div>
+        <div><label>Intervallo check (minuti)</label><input type="number" x-model.number="edit.poll_interval_minutes">
+        </div>
+        <div class="row" style="gap:8px;align-items:center">
+          <input type="checkbox" id="edit_au" x-model="edit.auto_update" style="width:auto">
+          <label for="edit_au" style="margin:0;cursor:pointer">Aggiornamenti automatici</label>
+        </div>
+        <div class="err-msg" x-show="editErr" x-text="editErr"></div>
+        <div class="row">
+          <div class="sp"></div><button @click="edit=null">Annulla</button><button class="primary"
+            @click="saveEdit()">Salva</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- ============ MODALE NUOVO ============ -->
+  <template x-if="showAdd">
+    <div class="modal">
+      <div class="panel">
+        <div class="row">
+          <h2>Nuovo sito</h2>
+          <div class="sp"></div>
+          <button @click="showAdd=false">✕</button>
+        </div>
+        <div><label>Nome</label><input x-model="form.name"></div>
+        <div><label>URL</label><input x-model="form.url" placeholder="https://sito.it"></div>
+        <div><label>CMS</label>
+          <select x-model="form.cms">
+            <option value="wp">WordPress</option>
+            <option value="joomla">Joomla</option>
+          </select>
+        </div>
+        <div><label>URL admin (opzionale)</label><input x-model="form.admin_url"
+            placeholder="vuoto = /wp-admin o /administrator"></div>
+        <div><label>Token (dal connettore installato sul sito)</label><input x-model="form.token"
+            placeholder="incolla qui il token"></div>
+        <div><label>Gruppo (opzionale)</label><input x-model="form.group"></div>
+        <div><label>Tag / cartelle (separa con virgola)</label>
+          <input class="taginput" x-model="form.tags" list="tagsuggest" placeholder="es. clienteRossi, fascia1"></div>
+        <div class="row" style="gap:8px;align-items:center">
+          <input type="checkbox" id="add_au" x-model="form.auto_update" style="width:auto">
+          <label for="add_au" style="margin:0;cursor:pointer">Attiva aggiornamenti automatici</label>
+        </div>
+        <div class="err-msg" x-show="formErr" x-text="formErr"></div>
+        <div class="row">
+          <div class="sp"></div><button @click="showAdd=false">Annulla</button><button class="primary"
+            @click="addSite()">Aggiungi</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- ============ MODALE INSTALLA PLUGIN/TEMA ============ -->
+  <!-- ============ MODALE CONNETTORI ============ -->
+  <template x-if="showConn">
+    <div class="modal" @click.self="showConn=false" @keydown.escape.window="showConn=false">
+      <div class="panel" style="max-width:560px">
+        <div class="row">
+          <h2>Connettori</h2>
+          <div class="sp"></div>
+          <button @click="showConn=false">✕</button>
+        </div>
+        <div class="hint mut" style="margin-top:-6px">
+          L'archivio dei due connettori: scaricali per agganciare un nuovo sito, ricaricali quando esce una versione nuova.
+        </div>
+
+        <template x-for="c in connList" :key="c.kind">
+          <div class="connrow">
+            <div class="ic" x-text="c.kind==='wp' ? 'W' : 'J'"></div>
+            <div class="inf">
+              <div class="nm" x-text="c.kind==='wp' ? 'WordPress — td-panopticon' : 'Joomla — plg_system_tdpanopticon'"></div>
+              <div class="mut" x-show="c.present">
+                <span x-show="c.version">v<b x-text="c.version"></b> · </span>
+                <span x-text="connSize(c.size)"></span> · caricato <span x-text="connDate(c.mtime)"></span>
+              </div>
+              <div class="mut" x-show="!c.present">Non ancora caricato</div>
+            </div>
+            <a class="btn-like" :href="connDownloadUrl(c.kind)" x-show="c.present" download>⬇ Scarica</a>
+            <label class="btn-like" :class="connBusy?'dis':''">
+              <span x-text="c.present ? 'Sostituisci' : 'Carica'"></span>
+              <input type="file" accept=".zip" style="display:none" :disabled="connBusy" @change="uploadConn(c.kind, $event)">
+            </label>
+          </div>
+        </template>
+
+        <div class="err-msg" x-show="connErr" x-text="connErr"></div>
+        <div class="ok-msg" x-show="connMsg" x-text="connMsg"></div>
+
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bd)">
+          <div style="font-weight:600;font-size:14px;margin-bottom:4px">Registrazione automatica (WordPress)</div>
+          <div class="hint mut" style="margin-bottom:8px">
+            Incolla questa chiave nella pagina <i>Impostazioni → Panopticon Agent</i> del connettore sul sito:
+            il sito si collega da solo (scegli cartella e auto-update da lì). I siti già presenti non vengono toccati.
+          </div>
+          <div class="row" style="gap:8px">
+            <input type="text" readonly :value="regKey" onclick="this.select()"
+                   style="flex:1;font-family:monospace;font-size:12.5px">
+            <button class="btn-like" type="button" @click="navigator.clipboard.writeText(regKey);connMsg='Chiave copiata.'">Copia</button>
+            <button class="btn-like" type="button"
+                    @click="if(confirm('Rigenerare la chiave? Quella vecchia smette di funzionare per i NUOVI collegamenti.')) rotateRegKey()">Rigenera</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <template x-if="showInstall">
+    <div class="modal" @keydown.escape.window="closeInstall()">
+      <div class="panel" style="max-width:640px">
+        <div class="row">
+          <h2 x-text="inst.mode==='remove' ? 'Rimuovi plugin / tema' : 'Installa plugin / tema'"></h2>
+          <div class="sp"></div>
+          <button @click="closeInstall()">✕</button>
+        </div>
+
+        <div class="seg" style="margin-bottom:4px">
+          <button :class="inst.mode==='install'?'on':''" @click="inst.mode='install';instResults=[];instErr=''">Installa</button>
+          <button :class="inst.mode==='remove'?'on':''" @click="inst.mode='remove';instResults=[];instErr=''">Rimuovi</button>
+        </div>
+
+        <div class="row" style="gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:180px"><label>Piattaforma</label>
+            <select x-model="inst.cms" @change="inst.sel=[];instSearchReset()">
+              <option value="wp">WordPress</option>
+              <option value="joomla">Joomla</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:180px" x-show="inst.mode==='install' && inst.cms==='wp'"><label>Tipo</label>
+            <select x-model="inst.kind">
+              <option value="plugin">Plugin</option>
+              <option value="theme">Tema</option>
+            </select>
+          </div>
+        </div>
+        <p class="mut" x-show="inst.mode==='install' && inst.cms==='joomla'" style="margin:6px 0 0">
+          Su Joomla il tipo (plugin/modulo/template/componente) viene rilevato automaticamente dal manifest del pacchetto.
+        </p>
+
+        <div x-show="inst.mode==='remove'" style="margin-top:12px">
+          <label>Cerca l'estensione da rimuovere</label>
+          <div class="row" style="gap:8px">
+            <input type="text" x-model="inst.q" placeholder="nome o slug, es. panopticon"
+              @keydown.enter="instSearch()" style="flex:1">
+            <button @click="instSearch()" :disabled="inst.searchBusy || inst.q.trim().length<2"
+              x-text="inst.searchBusy?'…':'Cerca'"></button>
+          </div>
+          <div class="err-msg" x-show="inst.searchErr" x-text="inst.searchErr"></div>
+
+          <template x-if="inst.searchResults.length">
+            <div style="max-height:320px;overflow:auto;border:1px solid var(--bd);border-radius:10px;margin-top:8px">
+              <template x-for="r in inst.searchResults" :key="r.type+'|'+r.slug">
+                <div style="border-bottom:1px solid var(--bd)">
+                  <label class="row"
+                    :style="'gap:10px;align-items:center;padding:8px 12px;margin:0;'+(r.protected?'opacity:.5;cursor:not-allowed':'cursor:pointer')">
+                    <input type="checkbox" style="width:auto" :disabled="r.protected"
+                      :checked="instResultSelected(r)" @change="instToggleResult(r)">
+                    <div style="flex:1;min-width:0">
+                      <div><span x-text="r.name"></span>
+                        <span class="pill" style="margin-left:6px" x-text="r.type"></span>
+                        <span class="pill k" style="margin-left:4px" x-show="r.protected">protetto</span>
+                      </div>
+                      <div class="mut" style="font-size:11px;font-family:ui-monospace,monospace" x-text="r.slug"></div>
+                      <!-- versioni installate: una sola = allineato, piu' di una = miste -->
+                      <div style="font-size:11.5px;margin-top:2px" x-show="(r.versions||[]).length">
+                        <span class="mut">versione:</span>
+                        <span x-text="(r.versions||[]).map(v=>'v'+v).join(' · ')"></span>
+                        <span class="pill" style="margin-left:6px;background:#5e4a1e;color:var(--warn)"
+                              x-show="(r.versions||[]).length>1">versioni miste</span>
+                      </div>
+                    </div>
+                    <!-- "su N siti" cliccabile: espande l'elenco (stop: non deve toccare la checkbox) -->
+                    <button type="button" class="ghost" style="font-size:12px;white-space:nowrap;padding:3px 8px"
+                      @click.prevent.stop="instToggleOpen(r)"
+                      x-text="'su '+r.count+' siti '+(instIsOpen(r)?'▴':'▾')"></button>
+                  </label>
+                  <!-- elenco siti con versione installata -->
+                  <div x-show="instIsOpen(r)" style="padding:0 12px 8px 38px">
+                    <template x-for="d in (r.site_details||[])" :key="d.id">
+                      <div class="row" style="gap:8px;font-size:12px;padding:3px 0;margin:0;align-items:center">
+                        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis" x-text="d.name"></span>
+                        <span style="font-family:ui-monospace,monospace" x-text="d.version ? 'v'+d.version : '—'"></span>
+                        <span class="pill" style="background:#5e4a1e;color:var(--warn)" x-show="d.update_available"
+                              x-text="'→ '+(d.new_version||'update')"></span>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </template>
+          <div class="mut" x-show="inst.searched && !inst.searchResults.length && !inst.searchBusy" style="margin-top:8px">
+            Nessuna estensione trovata per "<span x-text="inst.q"></span>".
+          </div>
+
+          <div x-show="inst.rmItems.length" class="mut" style="margin-top:8px;font-size:12px">
+            Selezionate <strong x-text="inst.rmItems.length"></strong> estensioni:
+            <span x-text="inst.rmItems.map(i=>i.slug).join(', ')"></span>.
+            Controlla i siti qui sotto, poi premi Rimuovi.
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <div class="row" style="align-items:center">
+            <label style="margin:0">Siti di destinazione</label>
+            <div class="sp"></div>
+            <button class="ghost" type="button" @click="instSelectAll()" x-text="instAllSelected()?'Deseleziona tutti':'Seleziona tutti'"></button>
+          </div>
+          <div style="max-height:230px;overflow:auto;border:1px solid var(--bd);border-radius:10px;margin-top:6px">
+            <template x-for="st in instSites()" :key="st.id">
+              <label class="row" style="gap:10px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--bd);cursor:pointer;margin:0">
+                <input type="checkbox" :value="st.id" x-model.number="inst.sel" style="width:auto">
+                <span :class="'dot '+dotClass(st)" style="width:9px;height:9px;border-radius:50%;display:inline-block"></span>
+                <span x-text="st.name"></span>
+                <span class="mut" x-text="hostOf(st.url)" style="margin-left:auto;font-size:12px"></span>
+              </label>
+            </template>
+            <template x-if="instSites().length===0">
+              <div class="mut" style="padding:12px">Nessun sito <span x-text="inst.cms==='wp'?'WordPress':'Joomla'"></span>.</div>
+            </template>
+          </div>
+          <div class="mut" style="margin-top:4px;font-size:12px" x-text="inst.sel.length+' sito/i selezionato/i'"></div>
+        </div>
+
+        <template x-if="inst.mode==='install'">
+          <div>
+            <div style="margin-top:12px"><label>Pacchetto (.zip)</label>
+              <input type="file" accept=".zip,application/zip" @change="instFile=$event.target.files[0]||null">
+            </div>
+            <div class="row" style="gap:8px;align-items:center;margin-top:10px">
+              <input type="checkbox" id="inst_act" x-model="inst.activate" style="width:auto">
+              <label for="inst_act" style="margin:0;cursor:pointer">Attiva dopo l'installazione</label>
+            </div>
+          </div>
+        </template>
+
+        <div class="err-msg" x-show="instErr" x-text="instErr"></div>
+
+        <div class="row" style="margin-top:14px">
+          <div class="sp"></div>
+          <button @click="closeInstall()" :disabled="instBusy">Chiudi</button>
+          <button x-show="inst.mode==='install'" class="primary"
+            :disabled="instBusy || !instFile || inst.sel.length===0" @click="runInstall()"
+            x-text="instBusy ? 'Installazione in corso…' : 'Installa'"></button>
+          <button x-show="inst.mode==='remove'" class="danger"
+            :disabled="instBusy || !inst.rmItems.length || inst.sel.length===0" @click="runUninstall()"
+            x-text="instBusy ? 'Rimozione in corso…' : 'Rimuovi'"></button>
+        </div>
+
+        <!-- risultati per sito -->
+        <template x-if="instResults.length">
+          <div style="margin-top:16px;border-top:1px solid var(--bd);padding-top:12px">
+            <div class="row" style="align-items:center">
+              <strong>Esito</strong>
+              <div class="sp"></div>
+              <span class="mut" style="font-size:12px"
+                x-text="instSummary.ok+' ok · '+instSummary.failed+' falliti su '+instSummary.total"></span>
+            </div>
+            <div style="margin-top:8px">
+              <template x-for="(r,idx) in instResults" :key="idx">
+                <div class="row" style="gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--bd)">
+                  <span :style="'color:'+(r.ok?'var(--ok)':'var(--err)')+';font-weight:700'" x-text="r.ok?'✓':'✗'"></span>
+                  <div style="flex:1;min-width:0">
+                    <div><span x-text="r.site_name"></span>
+                      <span class="mut" style="font-size:11px;font-family:ui-monospace,monospace" x-show="r.req_slug" x-text="' · '+r.req_slug"></span>
+                    </div>
+                    <div class="mut" style="font-size:12px" x-show="r.ok"
+                      x-text="inst.mode==='remove' ? ((r.name||r.slug||'estensione')+' · rimosso') : ((r.name||'estensione')+(r.new?(' v'+r.new):'')+(r.activated?' · attivato':' · installato'))"></div>
+                    <div style="color:var(--err);font-size:12px;word-break:break-word" x-show="!r.ok" x-text="r.error"></div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </template>
+
+  <!-- ============ MODALE SICUREZZA / 2FA ============ -->
+  <template x-if="show2fa">
+    <div class="modal" @click.self="show2fa=false" @keydown.escape.window="show2fa=false">
+      <div class="panel">
+        <div class="row">
+          <h2>Sicurezza</h2>
+          <div class="sp"></div>
+          <button @click="show2fa=false">✕</button>
+        </div>
+
+        <!-- auto-update globale -->
+        <div class="grp">Auto-update di tutti i siti</div>
+        <div class="row" style="gap:8px;align-items:center">
+          <span class="mut" style="flex:1">Attualmente attivo su <b x-text="mAuto"></b> di <b x-text="sites.length"></b>
+            siti. Applica a tutti in un colpo.</span>
+          <button class="primary" :disabled="bulkBusy" @click="bulkAutoUpdate(true)">Attiva su tutti</button>
+          <button class="danger" :disabled="bulkBusy" @click="bulkAutoUpdate(false)">Disattiva tutti</button>
+        </div>
+        <div class="ok-msg" x-show="bulkMsg" x-text="bulkMsg"></div>
+
+        <!-- notifiche telegram -->
+        <div class="grp">Notifiche Telegram</div>
+        <div class="row" style="gap:8px;align-items:center">
+          <span class="mut" style="flex:1">Ricevi avvisi su update falliti, siti offline e un riepilogo a fine ciclo. La
+            configurazione (token/chat) sta nel file <code>.env</code>.</span>
+          <button :disabled="tgBusy" @click="testTelegram()">Invia messaggio di test</button>
+        </div>
+        <div class="ok-msg" x-show="tgMsg" x-text="tgMsg"></div>
+        <div class="err-msg" x-show="tgErr" x-text="tgErr"></div>
+
+        <!-- username -->
+        <div class="grp">Nome utente</div>
+        <div class="row" style="gap:8px">
+          <input x-model="sec.username" style="flex:1">
+          <button class="primary" @click="changeUser()">Salva</button>
+        </div>
+        <div class="ok-msg" x-show="userMsg" x-text="userMsg"></div>
+        <div class="err-msg" x-show="userErr" x-text="userErr"></div>
+
+        <!-- stato -->
+        <div class="grp">Autenticazione a due fattori</div>
+        <div class="row">
+          <span>App Authenticator (TOTP)</span>
+          <div class="sp"></div>
+          <template x-if="sec.totp_enabled"><span class="pill g">attivo</span></template>
+          <template x-if="!sec.totp_enabled"><button @click="startTotpSetup()">Attiva</button></template>
+          <template x-if="sec.totp_enabled"><button class="danger" @click="disableTotp()">Disattiva</button></template>
+        </div>
+
+        <!-- setup totp -->
+        <template x-if="totpSetup">
+          <div
+            style="display:flex;flex-direction:column;gap:10px;border:1px solid var(--bd);border-radius:10px;padding:14px">
+            <div class="hint mut">Scansiona con Google Authenticator o Authy, poi inserisci il codice.</div>
+            <div class="qr" x-html="totpSetup.qr_svg"></div>
+            <div class="mut" style="text-align:center;word-break:break-all">Secret: <span
+                x-text="totpSetup.secret"></span></div>
+            <input class="codeinput" inputmode="numeric" maxlength="6" x-model="totpEnableCode" placeholder="000000">
+            <button class="primary" @click="enableTotp()">Conferma e attiva</button>
+            <div class="err-msg" x-show="secErr" x-text="secErr"></div>
+          </div>
+        </template>
+
+        <div class="row" style="margin-top:6px">
+          <span>Passkey / biometria</span>
+          <div class="sp"></div>
+          <button @click="registerPasskey()">+ Aggiungi passkey</button>
+        </div>
+        <template x-if="sec.passkeys && sec.passkeys.length">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <template x-for="p in sec.passkeys" :key="p.id">
+              <div class="extrow"><span x-text="p.label"></span><button class="danger"
+                  @click="deletePasskey(p.id)">Rimuovi</button></div>
+            </template>
+          </div>
+        </template>
+        <template x-if="!sec.passkeys || !sec.passkeys.length">
+          <div class="mut">Nessuna passkey registrata.</div>
+        </template>
+
+        <!-- cambio password -->
+        <div class="grp">Password</div>
+        <div><label>Password attuale</label><input type="password" x-model="pwOld"></div>
+        <div><label>Nuova password</label><input type="password" x-model="pwNew"></div>
+        <div class="ok-msg" x-show="pwMsg" x-text="pwMsg"></div>
+        <div class="err-msg" x-show="pwErr" x-text="pwErr"></div>
+        <div class="row">
+          <div class="sp"></div><button class="primary" @click="changePw()">Cambia password</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script>
+    // ---- helper base64url <-> ArrayBuffer per WebAuthn ----
+    function b64uToBuf(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); const pad = '='.repeat((4 - s.length % 4) % 4); const bin = atob(s + pad); const b = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++)b[i] = bin.charCodeAt(i); return b.buffer; }
+    function bufToB64u(buf) { const b = new Uint8Array(buf); let s = ''; for (let i = 0; i < b.length; i++)s += String.fromCharCode(b[i]); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+
+    function app() {
+      return {
+        token: localStorage.getItem('tdp_token') || '',
+        // token scoped per le immagini (vita breve, scope='image').
+        // Viaggia in query string negli <img src>, quindi NON deve essere il JWT pieno:
+        // se finisce nei log nginx/NPMplus, dura poco e da' accesso solo alle immagini.
+        imageToken: localStorage.getItem('tdp_image_token') || '',
+        view: localStorage.getItem('tdp_view') || 'list',
+        // login state
+        step: 'pwd', user: '', pwd: '', code: '', err: '', methods: [], pendingToken: '', needs2faSetup: false,
+        // app state
+        q: '', flt: 'all', sites: [], showAdd: false, formErr: '', sel: null, edit: null, editErr: '', openGrps: [], bulkBusy: false, bulkMsg: '', massBusy: false, massMsg: '',
+        // selezione multipla + tag/cartelle
+        selMode: false, selIds: [], tagFilter: '',
+        // pagine per cartella/tag: null = tutti i siti, 'ov' = panoramica, altro = nome tag ('__none' = senza cartella)
+        page: null,
+        // archivio connettori (Joomla/WP)
+        showConn: false, connList: [], connBusy: false, connErr: '', connMsg: '', regKey: '',
+        secBell: false,
+        tagModal: null, tagInput: '', rmTags: [], tagBusy: false, tagMsg: '', tagErr: '',
+        form: { name: '', url: '', cms: 'wp', admin_url: '', token: '', group: '', tags: '', poll_interval_minutes: 180, auto_update: false },
+        // security modal
+        show2fa: false, sec: { username: '', totp_enabled: false, passkeys: [] }, totpSetup: null, totpEnableCode: '', secErr: '',
+        pwOld: '', pwNew: '', pwMsg: '', pwErr: '', userMsg: '', userErr: '',
+        tgBusy: false, tgMsg: '', tgErr: '',
+        // mass install plugin/tema
+        showInstall: false, instBusy: false, instErr: '', instFile: null,
+        instResults: [], instSummary: { ok: 0, failed: 0, total: 0 },
+        inst: { cms: 'wp', kind: 'plugin', activate: true, sel: [], mode: 'install', rmItems: [], q: '', searchResults: [], searchBusy: false, searchErr: '', searched: false },
+
+        h() { return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + this.token }; },
+        hp() { return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + this.pendingToken }; },
+        setView(v) { this.view = v; localStorage.setItem('tdp_view', v); },
+
+        // salva entrambi i token dopo un login andato a buon fine
+        _setTokens(d) {
+          this.token = d.token || '';
+          localStorage.setItem('tdp_token', this.token);
+          if (d.image_token) {
+            this.imageToken = d.image_token;
+            localStorage.setItem('tdp_image_token', this.imageToken);
+          }
+        },
+
+        // chiede un nuovo image_token quando quello attuale scade (10 min).
+        // L'endpoint richiede un JWT pieno valido, quindi rinfresca trasparentemente.
+        async _refreshImageToken() {
+          try {
+            const r = await fetch('/api/image-token', { headers: this.h() });
+            if (r.ok) {
+              const d = await r.json();
+              if (d.image_token) {
+                this.imageToken = d.image_token;
+                localStorage.setItem('tdp_image_token', this.imageToken);
+              }
+            }
+          } catch (e) { /* niente da fare: l'<img> potra' fallire, e poi si rifa' al refresh */ }
+        },
+
+        async init() {
+          // routing pagine cartella: leggi l'hash all'avvio e segui i cambi (back/forward inclusi)
+          this._readHash();
+          window.addEventListener('hashchange', () => this._readHash());
+          if (this.token) {
+            // Rinnova SEMPRE l'image_token all'avvio. Vive solo 10 min: se la tab e'
+            // rimasta idle (PC in standby, tab in background col setInterval throttlato)
+            // il token presente in localStorage e' scaduto. Il vecchio guard
+            // "if (!this.imageToken)" rinnovava solo se ASSENTE, non se SCADUTO, e le
+            // <img> finivano in 401 fino al primo tick degli 8 minuti.
+            await this._refreshImageToken();
+            // refresh trasparente ogni 8 minuti (token vive 10)
+            setInterval(() => { if (this.token) this._refreshImageToken(); }, 8 * 60 * 1000);
+            await this.load();
+            this.loadSecBell();
+            // Auto-refresh della lista: senza, quando il worker aggiorna un sito in
+            // background la dashboard resta ferma sui contatori vecchi finche' non ricarichi
+            // a mano. Salto il tick se stai facendo qualcosa di bloccante (modale aperta)
+            // per non farti ballare la UI sotto le mani.
+            setInterval(() => {
+              if (!this.token) return;
+              if (this.showAdd || this.edit || this.showInstall || this.tagModal || this.show2fa || this.massBusy) return;
+              this.load();
+              this.loadSecBell();
+            }, 60 * 1000);
+          }
+          this.$watch('show2fa', v => { if (v) this.loadSec(); });
+        },
+
+        // campanello Centro Sicurezza: rosso se c'e' una vulnerabilita' grave attiva
+        async loadSecBell() {
+          try {
+            const r = await fetch('/api/security/summary', { headers: this.h() });
+            if (r.ok) { const d = await r.json(); this.secBell = !!d.bell; }
+          } catch(e) {}
+        },
+
+        // ---------- LOGIN ----------
+        async login() {
+          this.err = '';
+          const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: this.user, password: this.pwd }) });
+          if (r.status === 429) { this.err = 'Troppi tentativi. Riprova tra qualche minuto.'; return; }
+          if (!r.ok) { this.err = 'Credenziali errate'; return; }
+          const d = await r.json();
+          if (d.token) {
+            this._setTokens(d);
+            this.needs2faSetup = !!d.needs_2fa_setup; this.pwd = '';
+            await this.load(); return;
+          }
+          // serve 2fa
+          this.pendingToken = d.token_pending; this.methods = d.methods || []; this.step = '2fa'; this.pwd = '';
+        },
+        async verifyTotp() {
+          this.err = '';
+          const r = await fetch('/api/2fa/totp/verify', { method: 'POST', headers: this.hp(), body: JSON.stringify({ code: this.code }) });
+          if (r.status === 429) { this.err = 'Troppi tentativi. Riprova tra qualche minuto.'; return; }
+          if (!r.ok) { this.err = 'Codice non valido'; return; }
+          this._setTokens(await r.json());
+          this.step = 'pwd'; this.code = ''; await this.load();
+        },
+        async loginPasskey() {
+          this.err = '';
+          try {
+            const r = await fetch('/api/webauthn/login/begin', { method: 'POST', headers: this.hp() });
+            if (!r.ok) { this.err = 'Errore avvio passkey'; return; }
+            const opts = await r.json();
+            opts.challenge = b64uToBuf(opts.challenge);
+            if (opts.allowCredentials) opts.allowCredentials = opts.allowCredentials.map(c => ({ ...c, id: b64uToBuf(c.id) }));
+            const cred = await navigator.credentials.get({ publicKey: opts });
+            const payload = {
+              id: cred.id, rawId: bufToB64u(cred.rawId), type: cred.type,
+              response: {
+                authenticatorData: bufToB64u(cred.response.authenticatorData),
+                clientDataJSON: bufToB64u(cred.response.clientDataJSON),
+                signature: bufToB64u(cred.response.signature),
+                userHandle: cred.response.userHandle ? bufToB64u(cred.response.userHandle) : null,
+              },
+            };
+            const r2 = await fetch('/api/webauthn/login/complete', { method: 'POST', headers: this.hp(), body: JSON.stringify({ credential: payload }) });
+            if (r2.status === 429) { this.err = 'Troppi tentativi. Riprova tra qualche minuto.'; return; }
+            if (!r2.ok) { this.err = 'Passkey non valida'; return; }
+            this._setTokens(await r2.json());
+            this.step = 'pwd'; await this.load();
+          } catch (e) { this.err = 'Passkey annullata o non disponibile'; }
+        },
+        logout() {
+          this.token = ''; this.imageToken = ''; this.pendingToken = ''; this.step = 'pwd';
+          localStorage.removeItem('tdp_token');
+          localStorage.removeItem('tdp_image_token');
+        },
+
+        // ---------- DATI ----------
+        async load() {
+          const r = await fetch('/api/sites', { headers: this.h() });
+          if (r.status === 401) { this.logout(); return; }
+          this.sites = await r.json();
+        },
+
+        get filtered() {
+          const q = this.q.trim().toLowerCase();
+          let arr = this.sites.slice();
+          // filtro rapido
+          if (this.flt === 'upd') arr = arr.filter(s => this.hasUpd(s));
+          else if (this.flt === 'off') arr = arr.filter(s => s.status && s.status !== 'ok');
+          else if (this.flt === 'wp') arr = arr.filter(s => s.cms === 'wp');
+          else if (this.flt === 'joomla') arr = arr.filter(s => s.cms === 'joomla');
+          // pagina cartella attiva: filtra sul tag della pagina ('__none' = senza cartella)
+          if (this.page && this.page !== 'ov') {
+            if (this.page === '__none') arr = arr.filter(s => this.siteTags(s).length === 0);
+            else { const pf = this.page.toLowerCase(); arr = arr.filter(s => this.siteTags(s).some(t => t.toLowerCase() === pf)); }
+          } else if (this.tagFilter) {
+            const tf = this.tagFilter.toLowerCase();
+            arr = arr.filter(s => this.siteTags(s).some(t => t.toLowerCase() === tf));
+          }
+          // ricerca testo
+          if (q) arr = arr.filter(s => (s.name + ' ' + s.url).toLowerCase().includes(q));
+          // ordina: offline in cima, poi con update, poi ok; a parità per nome
+          const rank = s => { if (s.status && s.status !== 'ok') return 0; if (this.hasUpd(s)) return 1; return 2; };
+          arr.sort((a, b) => { const d = rank(a) - rank(b); return d !== 0 ? d : (a.name || '').localeCompare(b.name || ''); });
+          return arr;
+        },
+        get mOk() { return this.sites.filter(s => s.status === 'ok').length; },
+        get mUpd() { return this.sites.filter(s => this.hasUpd(s)).length; },
+        get mErr() { return this.sites.filter(s => s.status && s.status !== 'ok').length; },
+        get mAuto() { return this.sites.filter(s => s.auto_update).length; },
+
+        // tutti i tag presenti coi conteggi, ordinati per nome (case-insensitive)
+        get allTags() {
+          const map = new Map();   // chiave lowercase -> {name, count}
+          for (const s of this.sites) {
+            for (const t of this.siteTags(s)) {
+              const k = t.toLowerCase();
+              if (map.has(k)) map.get(k).count++;
+              else map.set(k, { name: t, count: 1 });
+            }
+          }
+          return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+        },
+        get allFilteredSelected() {
+          const f = this.filtered;
+          return f.length > 0 && f.every(s => this.selIds.includes(s.id));
+        },
+
+        // ---------- PAGINE PER CARTELLA (panoramica + pagina tag) ----------
+        _statsOf(arr) {
+          return {
+            count: arr.length,
+            upd: arr.filter(s => this.hasUpd(s)).length,
+            updTot: arr.reduce((n, s) => n + (s.updates_count || 0), 0),
+            off: arr.filter(s => s.status && s.status !== 'ok').length,
+            wp: arr.filter(s => s.cms === 'wp').length,
+            joomla: arr.filter(s => s.cms === 'joomla').length,
+          };
+        },
+        // card della panoramica: una per tag + "Senza cartella" (se serve), con conteggi
+        get tagStats() {
+          const out = [];
+          for (const t of this.allTags) {
+            const tf = t.name.toLowerCase();
+            const arr = this.sites.filter(s => this.siteTags(s).some(x => x.toLowerCase() === tf));
+            out.push({ key: t.name, name: t.name, ...this._statsOf(arr) });
+          }
+          const none = this.sites.filter(s => this.siteTags(s).length === 0);
+          if (none.length) out.push({ key: '__none', name: 'Senza cartella', ...this._statsOf(none) });
+          return out;
+        },
+        get totStats() { return this._statsOf(this.sites); },
+        // stats della pagina tag corrente (header)
+        get pageStats() {
+          if (!this.page || this.page === 'ov') return this._statsOf([]);
+          const arr = this.page === '__none'
+            ? this.sites.filter(s => this.siteTags(s).length === 0)
+            : this.sites.filter(s => this.siteTags(s).some(t => t.toLowerCase() === this.page.toLowerCase()));
+          return this._statsOf(arr);
+        },
+        get pageTitle() { return this.page === '__none' ? 'Senza cartella' : this.page; },
+        setPage(p) {
+          this.page = p;
+          this.tagFilter = '';            // le pagine sostituiscono il filtro chip
+          this.selMode = false; this.selIds = [];
+          location.hash = p === null ? '' : (p === 'ov' ? '#ov' : '#t/' + encodeURIComponent(p));
+          window.scrollTo(0, 0);
+        },
+        _readHash() {
+          const h = location.hash || '';
+          if (h === '#ov') this.page = 'ov';
+          else if (h.startsWith('#t/')) this.page = decodeURIComponent(h.slice(3));
+          else this.page = null;
+        },
+
+        // ---------- ARCHIVIO CONNETTORI ----------
+        async openConn() {
+          this.showConn = true; this.connErr = ''; this.connMsg = '';
+          await this.loadConn();
+          try {
+            const r = await fetch('/api/connectors/regkey', { headers: this.h() });
+            if (r.ok) this.regKey = (await r.json()).key || '';
+          } catch (e) { /* la chiave resta vuota, il resto della modale funziona */ }
+        },
+        async rotateRegKey() {
+          try {
+            const r = await fetch('/api/connectors/regkey/rotate', { method: 'POST', headers: this.h() });
+            if (r.ok) { this.regKey = (await r.json()).key || ''; this.connMsg = 'Chiave rigenerata.'; }
+          } catch (e) { this.connErr = 'Errore di rete'; }
+        },
+        async loadConn() {
+          try {
+            const r = await fetch('/api/connectors', { headers: this.h() });
+            if (r.ok) this.connList = await r.json();
+          } catch (e) { this.connErr = 'Errore di rete'; }
+        },
+        async uploadConn(kind, ev) {
+          const f = ev.target.files && ev.target.files[0];
+          if (!f) return;
+          this.connBusy = true; this.connErr = ''; this.connMsg = '';
+          try {
+            const fd = new FormData();
+            fd.append('package', f);
+            const r = await fetch('/api/connectors/' + kind, {
+              method: 'POST', headers: { 'Authorization': 'Bearer ' + this.token }, body: fd,
+            });
+            if (r.ok) {
+              this.connMsg = 'Connettore ' + (kind === 'wp' ? 'WordPress' : 'Joomla') + ' caricato.';
+              await this.loadConn();
+            } else {
+              const d = await r.json().catch(() => ({}));
+              this.connErr = d.detail || 'Upload fallito';
+            }
+          } catch (e) { this.connErr = 'Errore di rete'; }
+          this.connBusy = false;
+          ev.target.value = '';   // permette di ricaricare lo stesso file
+        },
+        connDownloadUrl(kind) { return '/api/connectors/' + kind + '/download?k=' + encodeURIComponent(this.imageToken); },
+        connDate(m) { return m ? new Date(m * 1000).toLocaleString(I18n.locale, { dateStyle: 'short', timeStyle: 'short' }) : ''; },
+        connSize(b) { return b ? (b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.round(b / 1024) + ' KB') : ''; },
+
+        // ---------- TAG / SELEZIONE ----------
+        siteTags(s) { return (s.tags || '').split(',').map(t => t.trim()).filter(Boolean); },
+        toggleTagFilter(name) { this.tagFilter = (this.tagFilter.toLowerCase() === name.toLowerCase()) ? '' : name; },
+        toggleSelMode() { this.selMode = !this.selMode; if (!this.selMode) this.selIds = []; },
+        isSel(id) { return this.selIds.includes(id); },
+        toggleSel(id) { const i = this.selIds.indexOf(id); if (i >= 0) this.selIds.splice(i, 1); else this.selIds.push(id); },
+        rowClick(s) { if (this.selMode) this.toggleSel(s.id); else this.detail(s); },
+        selectAllFiltered() {
+          const ids = this.filtered.map(s => s.id);
+          if (this.allFilteredSelected) this.selIds = this.selIds.filter(id => !ids.includes(id));
+          else { const set = new Set(this.selIds); ids.forEach(id => set.add(id)); this.selIds = [...set]; }
+        },
+        openTagModal(mode) { this.tagModal = mode; this.tagInput = ''; this.rmTags = []; this.tagErr = ''; this.tagMsg = ''; },
+        toggleRmTag(name) {
+          const i = this.rmTags.findIndex(t => t.toLowerCase() === name.toLowerCase());
+          if (i >= 0) this.rmTags.splice(i, 1); else this.rmTags.push(name);
+        },
+        async applyTags() {
+          this.tagErr = ''; this.tagMsg = '';
+          if (!this.selIds.length) { this.tagErr = 'Nessun sito selezionato'; return; }
+          const body = { site_ids: this.selIds, add: [], remove: [] };
+          if (this.tagModal === 'add') {
+            body.add = this.tagInput.split(',').map(t => t.trim()).filter(Boolean);
+            if (!body.add.length) { this.tagErr = 'Inserisci almeno un tag'; return; }
+          } else {
+            body.remove = this.rmTags.slice();
+            if (!body.remove.length) { this.tagErr = 'Seleziona almeno un tag da rimuovere'; return; }
+          }
+          this.tagBusy = true;
+          try {
+            const r = await fetch('/api/sites/bulk/tags', { method: 'POST', headers: this.h(), body: JSON.stringify(body) });
+            if (r.status === 401) { this.logout(); return; }
+            if (!r.ok) { this.tagErr = (await r.json().catch(() => ({}))).detail || ('Errore ' + r.status); return; }
+            const d = await r.json();
+            this.tagMsg = (this.tagModal === 'add' ? 'Tag aggiunti a ' : 'Tag rimossi da ') + d.updated + ' siti.';
+            await this.load();
+            // se ho rimosso il tag attivo come filtro e non esiste piu', resetto il filtro
+            if (this.tagFilter && !this.allTags.some(t => t.name.toLowerCase() === this.tagFilter.toLowerCase())) this.tagFilter = '';
+            setTimeout(() => { this.tagModal = null; }, 700);
+          } catch (e) { this.tagErr = 'Errore di rete'; }
+          this.tagBusy = false;
+        },
+
+        updTotal(s) { return (s.upd_plugins || 0) + (s.upd_themes || 0) + (s.upd_other || 0); },
+        hasUpd(s) { return this.updTotal(s) > 0 || s.core_update; },
+        dotClass(s) { if (!s.status) return 'unk'; return s.status === 'ok' ? 'ok' : 'err'; },
+        rowClass(s) { if (s.status && s.status !== 'ok') return 'r-err'; if (this.hasUpd(s)) return 'r-upd'; if (s.status === 'ok') return 'r-ok'; return ''; },
+        statusLabel(s) { if (!s.status) return 'mai controllato'; return s.status === 'ok' ? 'online' : 'offline'; },
+        hostOf(u) { try { return new URL(u).host; } catch (e) { return u; } },
+
+        async bulkAutoUpdate(val) {
+          this.bulkBusy = true; this.bulkMsg = '';
+          try {
+            const r = await fetch('/api/sites/bulk/auto-update?enabled=' + (val ? 'true' : 'false'), { method: 'POST', headers: this.h() });
+            if (r.status === 401) { this.logout(); return; }
+            if (r.ok) { const d = await r.json(); this.bulkMsg = (val ? 'Auto-update attivato' : 'Auto-update disattivato') + ' su ' + d.updated + ' siti.'; await this.load(); }
+            else this.bulkMsg = 'Errore durante l\'operazione.';
+          } catch (e) { this.bulkMsg = 'Errore di rete.'; }
+          this.bulkBusy = false;
+        },
+
+        async testTelegram() {
+          this.tgBusy = true; this.tgMsg = ''; this.tgErr = '';
+          try {
+            const r = await fetch('/api/sites/telegram/test', { method: 'POST', headers: this.h() });
+            if (r.status === 401) { this.logout(); return; }
+            if (r.ok) { this.tgMsg = 'Messaggio inviato! Controlla Telegram.'; }
+            else { this.tgErr = (await r.json()).detail || 'Invio fallito.'; }
+          } catch (e) { this.tgErr = 'Errore di rete.'; }
+          this.tgBusy = false;
+        },
+
+        // ---------- MASS INSTALL ----------
+        instSites() { return this.sites.filter(s => s.cms === this.inst.cms); },
+        instAllSelected() { const a = this.instSites(); return a.length > 0 && a.every(s => this.inst.sel.includes(s.id)); },
+        instSelectAll() { const a = this.instSites(); this.inst.sel = this.instAllSelected() ? [] : a.map(s => s.id); },
+        openInstall() { this.showInstall = true; this.instErr = ''; this.instResults = []; this.instFile = null; this.inst.sel = []; this.inst.mode = 'install'; this.inst.rmItems = []; this.inst.q = ''; this.inst.searchResults = []; this.inst.searched = false; this.inst.openKeys = []; },
+        instSearchReset() { this.inst.searchResults = []; this.inst.searched = false; this.inst.searchErr = ''; this.inst.rmItems = []; this.inst.sel = []; },
+        async instSearch() {
+          this.inst.searchErr = ''; this.inst.searched = false; this.inst.searchResults = [];
+          const q = this.inst.q.trim();
+          if (q.length < 2) { this.inst.searchErr = 'Inserisci almeno 2 caratteri'; return; }
+          this.inst.searchBusy = true;
+          try {
+            const r = await fetch('/api/install/search?cms=' + this.inst.cms + '&q=' + encodeURIComponent(q), { headers: this.h() });
+            if (r.status === 401) { this.logout(); return; }
+            if (!r.ok) { this.inst.searchErr = (await r.json().catch(() => ({}))).detail || ('Errore ' + r.status); return; }
+            const d = await r.json();
+            this.inst.searchResults = d.results || []; this.inst.searched = true;
+          } catch (e) { this.inst.searchErr = 'Errore di rete'; }
+          this.inst.searchBusy = false;
+        },
+        instResultSelected(r) { return this.inst.rmItems.some(i => i.type === r.type && i.slug === r.slug); },
+        // elenco siti espandibile nei risultati di ricerca (chiavi aperte: type|slug)
+        instIsOpen(r) { return (this.inst.openKeys || []).includes(r.type + '|' + r.slug); },
+        instToggleOpen(r) {
+          const k = r.type + '|' + r.slug;
+          const arr = this.inst.openKeys || [];
+          this.inst.openKeys = arr.includes(k) ? arr.filter(x => x !== k) : [...arr, k];
+        },
+        instToggleResult(r) {
+          if (r.protected) return;
+          const i = this.inst.rmItems.findIndex(x => x.type === r.type && x.slug === r.slug);
+          if (i >= 0) this.inst.rmItems.splice(i, 1);
+          else this.inst.rmItems.push({ type: r.type, slug: r.slug, name: r.name, site_ids: r.site_ids || [] });
+          // siti = unione dei site_ids degli item selezionati, limitata ai siti del cms corrente
+          const valid = new Set(this.instSites().map(s => s.id));
+          const union = new Set();
+          this.inst.rmItems.forEach(it => (it.site_ids || []).forEach(id => { if (valid.has(id)) union.add(id); }));
+          this.inst.sel = [...union];
+        },
+        closeInstall() { if (this.instBusy) return; this.showInstall = false; },
+        async runInstall() {
+          this.instErr = ''; this.instResults = [];
+          if (!this.instFile) { this.instErr = 'Seleziona un file .zip'; return; }
+          if (!this.instFile.name.toLowerCase().endsWith('.zip')) { this.instErr = 'Il pacchetto deve essere un .zip'; return; }
+          if (!this.inst.sel.length) { this.instErr = 'Seleziona almeno un sito'; return; }
+          const fd = new FormData();
+          fd.append('package', this.instFile);
+          fd.append('cms', this.inst.cms);
+          fd.append('kind', this.inst.kind);
+          fd.append('activate', this.inst.activate ? 'true' : 'false');
+          fd.append('site_ids', this.inst.sel.join(','));
+          this.instBusy = true;
+          try {
+            // NB: niente Content-Type a mano: lo setta il browser col boundary del multipart
+            const r = await fetch('/api/install', { method: 'POST', headers: { 'Authorization': 'Bearer ' + this.token }, body: fd });
+            if (r.status === 401) { this.logout(); return; }
+            if (!r.ok) { this.instErr = (await r.json().catch(() => ({}))).detail || ('Errore ' + r.status); return; }
+            const d = await r.json();
+            this.instResults = d.results || [];
+            this.instSummary = { ok: d.ok || 0, failed: d.failed || 0, total: d.total || 0 };
+            await this.load();   // ricarica i contatori (un nuovo plugin attivo cambia gli stati)
+          } catch (e) { this.instErr = 'Errore di rete: ' + e; }
+          this.instBusy = false;
+        },
+        async runUninstall() {
+          this.instErr = ''; this.instResults = [];
+          if (!this.inst.rmItems.length) { this.instErr = 'Seleziona almeno un\'estensione'; return; }
+          if (!this.inst.sel.length) { this.instErr = 'Seleziona almeno un sito'; return; }
+          const items = this.inst.rmItems.map(i => ({ type: i.type, slug: i.slug }));
+          const n = this.inst.sel.length, m = items.length;
+          if (!confirm('RIMOZIONE: ' + m + ' estensione/i (' + items.map(i => i.slug).join(', ') + ') verranno disinstallate da ' + n + ' sito/i. Operazione irreversibile. Procedo?')) return;
+          this.instBusy = true;
+          try {
+            const r = await fetch('/api/install/remove', {
+              method: 'POST', headers: this.h(),
+              body: JSON.stringify({ cms: this.inst.cms, items: items, site_ids: this.inst.sel })
+            });
+            if (r.status === 401) { this.logout(); return; }
+            if (!r.ok) { this.instErr = (await r.json().catch(() => ({}))).detail || ('Errore ' + r.status); return; }
+            const d = await r.json();
+            this.instResults = d.results || [];
+            this.instSummary = { ok: d.ok || 0, failed: d.failed || 0, total: d.total || 0 };
+            await this.load();
+          } catch (e) { this.instErr = 'Errore di rete: ' + e; }
+          this.instBusy = false;
+        },
+
+        async addSite() {
+          this.formErr = '';
+          const r = await fetch('/api/sites', { method: 'POST', headers: this.h(), body: JSON.stringify(this.form) });
+          if (!r.ok) { this.formErr = (await r.json()).detail || 'Errore'; return; }
+          this.showAdd = false; this.form = { name: '', url: '', cms: 'wp', admin_url: '', token: '', group: '', tags: '', poll_interval_minutes: 180, auto_update: false };
+          await this.load();
+        },
+        async refresh(s) { const r = await fetch(`/api/sites/${s.id}/refresh`, { method: 'POST', headers: this.h() }); if (r.ok) Object.assign(s, await r.json()); },
+        async massUpdate() {
+          // conta quanti hanno update pending per la conferma
+          const pending = this.sites.filter(s => s.auto_update && (s.core_update || (s.upd_plugins||0)>0 || (s.upd_themes||0)>0 || (s.upd_other||0)>0));
+          if (pending.length === 0) {
+            alert('Nessun sito con aggiornamenti in sospeso.');
+            return;
+          }
+          if (!confirm(`Aggiorno subito ${pending.length} sit${pending.length===1?'o':'i'} con update in sospeso?\n\nRiceverai il riepilogo su Telegram a fine ciclo.`)) return;
+          this.massBusy = true;
+          try {
+            const r = await fetch('/api/sites/bulk/update-now', { method:'POST', headers:this.h() });
+            if (r.status === 401) { this.logout(); return; }
+            if (r.ok) {
+              const d = await r.json();
+              alert(`Avviato l'aggiornamento di ${d.queued} sit${d.queued===1?'o':'i'}. Gli update partono a breve, il riepilogo arriva su Telegram.`);
+              // ricarica a raffica mentre gli update scaglionati completano, cosi' gli item
+              // aggiornati spariscono senza aspettare il tick da 60s.
+              [20000, 60000, 120000, 180000].forEach(ms => setTimeout(() => { if (this.token) this.load(); }, ms));
+            } else {
+              alert('Errore nell\'avvio del mass update.');
+            }
+          } catch(e) { alert('Errore di rete.'); }
+          this.massBusy = false;
+        },
+        async massUpdateSelected() {
+          if (!this.selIds.length) return;
+          if (!confirm(`Aggiorno subito ${this.selIds.length} sit${this.selIds.length===1?'o':'i'} selezionat${this.selIds.length===1?'o':'i'}?\n\nRiceverai il riepilogo su Telegram a fine ciclo.`)) return;
+          this.massBusy = true;
+          try {
+            const r = await fetch('/api/sites/bulk/update-selected', {
+              method:'POST', headers:this.h(),
+              body: JSON.stringify({ ids: this.selIds })
+            });
+            if (r.status === 401) { this.logout(); return; }
+            if (r.ok) {
+              const d = await r.json();
+              alert(`Avviato l'aggiornamento di ${d.queued} sit${d.queued===1?'o':'i'}. Il riepilogo arriva su Telegram.`);
+              // ricarica a raffica mentre gli update scaglionati completano.
+              [20000, 60000, 120000, 180000].forEach(ms => setTimeout(() => { if (this.token) this.load(); }, ms));
+            } else {
+              alert('Errore nell\'avvio dell\'aggiornamento selezionati.');
+            }
+          } catch(e) { alert('Errore di rete.'); }
+          this.massBusy = false;
+        },
+        async refreshAll() { for (const s of this.sites) { await this.refresh(s); } },
+        async shoot(s) { const r = await fetch(`/api/sites/${s.id}/screenshot`, { method: 'POST', headers: this.h() }); if (r.ok) Object.assign(s, await r.json()); },
+        async detail(s) {
+          const r = await fetch(`/api/sites/${s.id}`, { headers: this.h() });
+          if (r.ok) { this.sel = await r.json(); this.openGrps = this.groups(this.sel.extensions).filter(g => g.updcount > 0).map(g => g.title); }
+        },
+        openEdit(s) {
+          this.editErr = '';
+          this.edit = { id: s.id, name: s.name, url: s.url, cms: s.cms, admin_url: s.admin_url || '', token: s.token || '', group: s.group || '', tags: s.tags || '', poll_interval_minutes: s.poll_interval_minutes, auto_update: !!s.auto_update };
+          this.sel = null;
+        },
+        async saveEdit() {
+          this.editErr = '';
+          const { id, ...body } = this.edit;
+          const r = await fetch(`/api/sites/${id}`, { method: 'PATCH', headers: this.h(), body: JSON.stringify(body) });
+          if (!r.ok) { this.editErr = (await r.json()).detail || 'Errore'; return; }
+          const updated = await r.json(); this.edit = null;
+          if (this.sel && this.sel.id === id) Object.assign(this.sel, updated);
+          await this.load();
+        },
+        async del(s) { if (!confirm('Eliminare ' + s.name + '?')) return; await fetch(`/api/sites/${s.id}`, { method: 'DELETE', headers: this.h() }); this.sel = null; await this.load(); },
+        openSite(s) { window.open(s.url, '_blank'); },
+        async goAdmin(s) {
+          const w = window.open('', '_blank'); const al = s.cms === 'wp';
+          try {
+            const r = await fetch(`/api/sites/${s.id}/admin?autologin=${al}`, { headers: this.h() });
+            if (r.ok) { const u = (await r.json()).url; if (u && w) { w.location.href = u; return; } if (u) { window.open(u, '_blank'); return; } }
+            if (w) w.close(); alert('Impossibile aprire l\'admin: URL non disponibile.');
+          } catch (e) { if (w) w.close(); alert('Errore apertura admin: ' + e); }
+        },
+        copy(t) {
+          if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(t).then(() => { }, () => { }); return; }
+          const ta = document.createElement('textarea'); ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+          document.body.appendChild(ta); ta.focus(); ta.select(); try { document.execCommand('copy'); } catch (e) { } document.body.removeChild(ta);
+        },
+        groups(exts) {
+          const e = exts || []; const cat = t => (t === 'plugin' ? 'plugin' : ((t === 'theme' || t === 'template') ? 'theme' : 'other'));
+          const b = { plugin: [], theme: [], other: [] }; for (const x of e) { b[cat(x.type)].push(x); }
+          const sortf = (a, b) => (b.update_available - a.update_available) || a.name.localeCompare(b.name);
+          const mk = (title, items) => ({ title, items: items.sort(sortf), updcount: items.filter(x => x.update_available).length });
+          const out = [];
+          if (b.plugin.length) out.push(mk('Plugin', b.plugin));
+          if (b.theme.length) out.push(mk('Temi / Template', b.theme));
+          if (b.other.length) out.push(mk('Componenti / Moduli / Librerie', b.other));
+          return out;
+        },
+        toggleGrp(t) { const i = this.openGrps.indexOf(t); if (i >= 0) this.openGrps.splice(i, 1); else this.openGrps.push(t); },
+
+        // ---------- SICUREZZA / 2FA ----------
+        async loadSec() {
+          const r = await fetch('/api/2fa/status', { headers: this.h() });
+          if (r.ok) this.sec = await r.json();
+        },
+        async startTotpSetup() {
+          this.secErr = '';
+          const r = await fetch('/api/2fa/totp/setup', { headers: this.h() });
+          if (!r.ok) { this.secErr = (await r.json()).detail || 'Errore setup'; return; }
+          this.totpSetup = await r.json();
+        },
+        async enableTotp() {
+          this.secErr = '';
+          const r = await fetch('/api/2fa/totp/enable', { method: 'POST', headers: this.h(), body: JSON.stringify({ code: this.totpEnableCode }) });
+          if (!r.ok) { this.secErr = (await r.json()).detail || 'Codice non valido'; return; }
+          this.totpSetup = null; this.totpEnableCode = ''; this.needs2faSetup = false; await this.loadSec();
+        },
+        async disableTotp() {
+          if (!confirm('Disattivare il TOTP?')) return;
+          await fetch('/api/2fa/totp/disable', { method: 'POST', headers: this.h() }); await this.loadSec();
+        },
+        async registerPasskey() {
+          this.secErr = '';
+          try {
+            const r = await fetch('/api/webauthn/register/begin', { method: 'POST', headers: this.h() });
+            if (!r.ok) { this.secErr = (await r.json()).detail || 'Errore'; return; }
+            const opts = await r.json();
+            opts.challenge = b64uToBuf(opts.challenge);
+            opts.user.id = b64uToBuf(opts.user.id);
+            if (opts.excludeCredentials) opts.excludeCredentials = opts.excludeCredentials.map(c => ({ ...c, id: b64uToBuf(c.id) }));
+            const cred = await navigator.credentials.create({ publicKey: opts });
+            const payload = {
+              id: cred.id, rawId: bufToB64u(cred.rawId), type: cred.type,
+              response: {
+                attestationObject: bufToB64u(cred.response.attestationObject),
+                clientDataJSON: bufToB64u(cred.response.clientDataJSON),
+              },
+            };
+            const label = prompt('Nome per questa passkey (es. iPhone, MacBook):', 'passkey') || 'passkey';
+            const r2 = await fetch('/api/webauthn/register/complete', { method: 'POST', headers: this.h(), body: JSON.stringify({ credential: payload, label }) });
+            if (!r2.ok) { this.secErr = (await r2.json()).detail || 'Registrazione fallita'; return; }
+            this.needs2faSetup = false; await this.loadSec();
+          } catch (e) { this.secErr = 'Registrazione annullata o non disponibile'; }
+        },
+        async deletePasskey(id) {
+          if (!confirm('Rimuovere questa passkey?')) return;
+          await fetch('/api/webauthn/register/delete', { method: 'POST', headers: this.h(), body: JSON.stringify({ label: id }) });
+          await this.loadSec();
+        },
+        async changeUser() {
+          this.userMsg = ''; this.userErr = '';
+          const r = await fetch('/api/account/username', { method: 'POST', headers: this.h(), body: JSON.stringify({ username: this.sec.username }) });
+          if (!r.ok) { this.userErr = (await r.json()).detail || 'Errore'; return; }
+          this.userMsg = 'Nome utente aggiornato.';
+        },
+        async changePw() {
+          this.pwErr = ''; this.pwMsg = '';
+          const r = await fetch('/api/account/password', { method: 'POST', headers: this.h(), body: JSON.stringify({ old_password: this.pwOld, new_password: this.pwNew }) });
+          if (!r.ok) { this.pwErr = (await r.json()).detail || 'Errore'; return; }
+          this.pwMsg = 'Password aggiornata.'; this.pwOld = ''; this.pwNew = '';
+        },
+      }
+    }
+    // carica lo stato sicurezza quando apri il modale
+    document.addEventListener('alpine:init', () => { });
+  </script>
+</body>
+
+</html>
