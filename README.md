@@ -68,7 +68,7 @@ The API is exposed on container port `8080` and, by default, on host port `8810`
 Clone the repository and enter the project directory:
 
 ```sh
-git clone <your-repository-url>
+git clone Giuseppe-sciarra/SentinelTD
 cd panopticon-lite
 ```
 
