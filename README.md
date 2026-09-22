@@ -293,7 +293,7 @@ Contributions are welcome too: bug reports with clear reproduction steps, transl
 
 ## Licence
 
-TiDiTalk is free software released under the GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later). You may use, study, modify and redistribute it; if you distribute a modified version, or run one as a network service for other people, the corresponding source must be made available under the same licence. The full text is in `LICENSE`.
+TiDiTalk is free software released under the GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later). You may use, study, modify and redistribute it; if you distribute a modified version, or run one as a network service for other people, the corresponding source must be made available under the same licence. The full text is in [`LICENSE`](LICENSE).
 
 Dependency and bundled asset licences remain applicable.
 
