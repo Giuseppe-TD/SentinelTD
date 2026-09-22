@@ -1,0 +1,31 @@
+{
+  "name": "tiditalk-server",
+  "version": "1.1.0",
+  "description": "TiDiTalk - self-hosted WebRTC video meetings (Giuseppe Sciarra / Tastiere Digitali)",
+  "license": "AGPL-3.0-or-later",
+  "author": "Giuseppe Sciarra / Tastiere Digitali",
+  "main": "index.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "bundle-client": "esbuild --bundle --platform=browser --format=iife --global-name=mediasoupClient --define:global=globalThis --minify --outfile=../public/assets/js/mediasoup-client.min.js bundle-entry.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "mediasoup": "^3.26.0",
+    "mediasoup-client": "^3.23.1",
+    "socket.io": "^4.8.3",
+    "dotenv": "^18.0.0",
+    "cors": "^2.8.6",
+    "better-sqlite3": "^13.0.3",
+    "nodemailer": "^10.0.0",
+    "bcryptjs": "^3.0.3"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "nodemon": "^3.1.14"
+  }
+}
