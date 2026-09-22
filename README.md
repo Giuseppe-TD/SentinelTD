@@ -25,18 +25,20 @@ It combines website availability monitoring, CMS and extension update tracking, 
 ### Key features
 
 - Website availability and status monitoring.
-- WordPress and Joomla version/update tracking through compatible connectors.
+- WordPress and Joomla version/update tracking through the included connectors.
 - Manual, selected and bulk update workflows.
-- Optional scheduled/nightly update cycles.
-- Isolated browser screenshots with history.
+- Optional scheduled/nightly update cycles with automatic retries.
+- Guided bulk install/remove across many sites: select by folder, and removal targets only the sites that actually have the extension.
+- Isolated browser screenshots (Google Chrome, so H.264 background videos render) with list thumbnails.
 - Security and vulnerability feed aggregation.
 - Domain expiry monitoring with configurable reminders.
-- Plugin, theme and license renewal tracking.
+- Plugin, theme and license renewal tracking with recurring renewals.
 - Tags, folders, CSV export and update history.
-- Email and Telegram notifications.
-- Monthly PDF reports and statistics.
+- Email and Telegram notifications with editable templates.
+- Monthly PDF reports, per-folder or global, sent automatically.
+- On-demand detailed reports (PDF or CSV): per site and component, how many times it was updated and from which version to which, with the full history of every update.
+- Statistics dashboard with month-over-month comparison.
 - Password authentication, TOTP and passkeys.
-- Editable notification templates.
 - Custom branding.
 - English, Italian, French and German interface.
 
@@ -52,7 +54,7 @@ It combines website availability monitoring, CMS and extension update tracking, 
 
 The API is exposed on container port `8080` and, by default, on host port `8810` through Docker Compose.
 
-> **CMS connectors:** Sentinel TD uses separate WordPress and Joomla connector packages. The repository is prepared to distribute the official connector ZIP files from [`connectors/`](connectors/). These packages are installed on the target CMS sites; they are not Docker services and are not built into the Sentinel containers.
+> **CMS connectors:** the WordPress and Joomla connector sources are in `connectors/`. Build the installable packages with `python scripts/build_connectors.py` — see `connectors/README.md`. The automatic-registration key is never stored in the repository: it is injected into the WordPress package only at build time.
 
 ## Requirements
 
@@ -68,8 +70,8 @@ The API is exposed on container port `8080` and, by default, on host port `8810`
 Clone the repository and enter the project directory:
 
 ```sh
-git clone https://github.com/Giuseppe-sciarra/SentinelTD.git
-cd SentinelTD
+git clone <your-repository-url>
+cd panopticon-lite
 ```
 
 Create the environment file:
@@ -123,32 +125,17 @@ http://localhost:8810/healthz
 
 On a fresh database, sign in as `admin` using the configured `ADMIN_PASSWORD`. The initial password is used to bootstrap the administrator; subsequent password changes are stored in PostgreSQL.
 
-## CMS connectors
-
-Sentinel TD communicates with WordPress and Joomla websites through dedicated connector packages.
-
-The public repository keeps the distributable connector ZIP files in:
-
-```text
-connectors/
-├── README.md
-├── <WordPress connector>.zip
-└── <Joomla connector>.zip
-```
-
-Download the ZIP for the CMS you need and install it with the normal WordPress plugin or Joomla extension installer. Then configure/register the site using the connector itself and the registration details provided by Sentinel TD.
-
-The `connectors/` directory in this GitHub repository is a **source-distribution folder**. It is separate from Sentinel TD's runtime connector archive, which is stored in the Docker `connectors` volume and managed from the Sentinel interface. If you want a connector package to be downloadable from a running Sentinel installation, upload that ZIP from the connector management area as well.
-
-Updating a ZIP file under the repository `connectors/` directory does **not** require rebuilding the Sentinel Docker services. A rebuild is only needed when application source files change.
-
-Before publishing connector packages, review each ZIP to make sure it contains no site-specific tokens, credentials, private URLs or development files.
-
 ## Production setup
 
 Use an HTTPS reverse proxy in front of Sentinel TD.
 
-The default host binding is loopback. If your reverse proxy runs on another host or in another container, configure `BIND_ADDRESS` and network routing deliberately instead of pointing the proxy to its own `localhost`.
+The default host binding is loopback. If your reverse proxy runs on another host or in another container, configure `BIND_ADDRESS` and network routing deliberately instead of pointing the proxy to its own `localhost`. For example, with the proxy on another machine of the same LAN:
+
+```env
+BIND_ADDRESS=0.0.0.0   # then restrict port 8810 to the proxy's address with a firewall
+TZ=Europe/Rome         # scheduled updates, monthly reports and month boundaries follow this zone
+DEFAULT_UI_LANGUAGE=it # language of server-generated emails and PDF reports
+```
 
 For passkeys, configure:
 
@@ -267,21 +254,12 @@ See `SECURITY.md` and `docs/ANALYSIS.md` for additional notes.
 
 ## Project documentation
 
+- `CHANGELOG.md` — release notes.
+- `connectors/README.md` — WordPress/Joomla connectors and how to build them.
 - `docs/LANGUAGES.md` — language maintenance.
 - `docs/PUBLISHING.md` — GitHub publishing guide.
 - `docs/ANALYSIS.md` — analysis and verification notes.
 - `SECURITY.md` — security information.
-
-## ❤️ Support the project
-
-Sentinel TD is developed and maintained independently.
-
-If you find it useful and would like to support its continued development, you can make a contribution via PayPal.
-
-[**Support Sentinel TD via PayPal**](https://paypal.me/raxiel87)
-
-Every contribution helps with development, testing and maintenance.
-Thank you for supporting the project.
 
 ## Attribution and licensing
 

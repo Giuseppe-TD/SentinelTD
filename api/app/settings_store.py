@@ -14,6 +14,7 @@ DEFAULTS = {
     "expiry_warning_days": 30,
     "expiry_critical_days": 7,
     "screenshot_every_hours": 12,   # ogni quante ore rigenerare l'anteprima dei siti
+    "history_retention_days": 400,  # cronologia dettagliata degli update (report dettagliato)
 }
 
 
@@ -36,6 +37,7 @@ def normalize(data: dict | None) -> dict:
         ("expiry_warning_days", 1, 3650),
         ("expiry_critical_days", 1, 3650),
         ("screenshot_every_hours", 1, 720),
+        ("history_retention_days", 7, 3650),
     ):
         try:
             out[key] = max(lo, min(hi, int(src.get(key, out[key]))))

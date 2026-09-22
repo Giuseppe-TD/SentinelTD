@@ -17,7 +17,7 @@ from urllib.parse import urlparse
 import httpx
 from arq import cron
 from arq.connections import RedisSettings
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 
 from .config import settings
 from .db import SessionLocal, engine, run_migrations
@@ -616,8 +616,16 @@ async def tick(ctx):
     # pulizia storico update piu' vecchio di 7 giorni (best effort, non blocca il tick)
     try:
         async with SessionLocal() as _s:
+            # Conservazione della cronologia dettagliata: la pagina "Storico" e la dashboard
+            # mostrano comunque 7 giorni; il resto serve al report dettagliato ("dalla X alla Y"
+            # per ogni singolo aggiornamento). Giorni configurabili in Impostazioni.
+            try:
+                from .settings_store import get_operational_settings
+                _keep = int((await get_operational_settings()).get("history_retention_days") or 400)
+            except Exception:  # noqa: BLE001
+                _keep = 400
             await _s.execute(delete(UpdateHistory).where(
-                UpdateHistory.created_at < datetime.now(timezone.utc) - timedelta(days=7)))
+                UpdateHistory.created_at < datetime.now(timezone.utc) - timedelta(days=max(7, _keep))))
             await _s.commit()
     except Exception:  # noqa: BLE001
         pass
@@ -924,7 +932,7 @@ async def update_site(ctx, site_id: int):
                 ok=bool(res["ok"]), error=(res["error"] or "")[:2000],
             ))
             # rollup mensile (conservato per sempre: alimenta il report mensile in PDF)
-            await _roll_monthly(s, site, etype, name, slug, res)
+            await _roll_monthly(s, site, etype, name, slug, res, frm=current or "")
             if ext is not None:
                 if res["ok"]:
                     # successo: azzera eventuale cooldown
@@ -1188,7 +1196,7 @@ async def security_scan(ctx):
 
 
 
-async def _roll_monthly(s, site, etype: str, name: str, slug: str, res: dict) -> None:
+async def _roll_monthly(s, site, etype: str, name: str, slug: str, res: dict, frm: str = "") -> None:
     """Incrementa il contatore mensile per (periodo, sito, estensione). Upsert atomico:
     nessuna race tra update paralleli, e il conteggio 'quante volte' resta esatto."""
     from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -1199,7 +1207,9 @@ async def _roll_monthly(s, site, etype: str, name: str, slug: str, res: dict) ->
         ext_type=etype, ext_name=name, slug=slug,
         ok_count=1 if ok else 0, fail_count=0 if ok else 1,
         last_version=(res.get("new") or "") if ok else "",
-    ).on_conflict_do_update(
+        first_version=frm or "",
+    )
+    stmt = stmt.on_conflict_do_update(
         index_elements=["period", "site_id", "ext_type", "slug"],
         set_={
             "ok_count": UpdateMonthly.__table__.c.ok_count + (1 if ok else 0),
@@ -1207,6 +1217,9 @@ async def _roll_monthly(s, site, etype: str, name: str, slug: str, res: dict) ->
             "site_name": site.name,
             "ext_name": name,
             "last_version": (res.get("new") or "") if ok else UpdateMonthly.__table__.c.last_version,
+            # la versione di partenza resta quella del PRIMO aggiornamento del mese
+            "first_version": func.coalesce(func.nullif(UpdateMonthly.__table__.c.first_version, ""),
+                                           stmt.excluded.first_version),
             "updated_at": datetime.now(timezone.utc),
         },
     )

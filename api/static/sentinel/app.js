@@ -23,7 +23,7 @@ function sentinel() {
     exp: { domains: [], components: [], loadingDomains: false, loadingComponents: false },
     expiryForm: { id: null, platform: 'both', name: '', provider: '', notes: '', date: '', recur: 12, recurCustom: 0 }, expiryEdit: false, expiryErr: '',
     prefsLoaded: false,
-    prefs: { domain_alert_days: [30,14,7], component_alert_days: [30,14,7], domain_alert_text: '30, 14, 7', component_alert_text: '30, 14, 7', domain_scan_days: 7, domain_parallel_lookups: 4, expiry_warning_days: 30, expiry_critical_days: 7, screenshot_every_hours: 12, busy: false, msg: '', err: '' },
+    prefs: { domain_alert_days: [30,14,7], component_alert_days: [30,14,7], domain_alert_text: '30, 14, 7', component_alert_text: '30, 14, 7', domain_scan_days: 7, domain_parallel_lookups: 4, expiry_warning_days: 30, expiry_critical_days: 7, screenshot_every_hours: 12, history_retention_days: 400, busy: false, msg: '', err: '' },
 
     // ---------- ui ----------
     route: { page: 'dashboard', folder: null, siteId: null, tab: 'overview' },
@@ -35,7 +35,8 @@ function sentinel() {
     tagsForm: { add: '', remove: '' },
     account: { username: '', oldPw: '', newPw: '', msg: '', err: '' },
     notif: { events: [], cur: null, edit: null, preview: null, msg: '', err: '', busy: false, tab: 'email', previewTab: 'email', source: false },
-    stats: { period: '', scope: '__all__', months: 12, data: null, trend: null, periods: [], scopes: [], mode: 'month', cmpA: '', cmpB: '', cmp: null, busy: false },
+    stats: { period: '', scope: '__all__', months: 12, data: null, trend: null, periods: [], scopes: [], mode: 'month', cmpA: '', cmpB: '', cmp: null, busy: false, hover: null },
+    drep: { from: '', to: '', range: 'q3', mode: 'all', folder: '', ids: [], filter: '', history: true, failed: true, format: 'pdf', busy: false, oldest: '' },
     rep: { cfg: null, template: '', defaultTemplate: '', periods: [], period: '', scopes: [], scope: '__all__', trend: null, trendMonths: 12, html: '', busy: false, msg: '', err: '', advanced: false, dirty: false },
     sec2fa: { totp: false, passkeys: [], setup: null, code: '', msg: '', err: '' },
 
@@ -371,16 +372,109 @@ function sentinel() {
     get allTags() { const set = new Set(); this.sites.forEach(s => this.siteTags(s).forEach(t => set.add(t))); return [...set].sort(); },
 
     // ---------- install / remove ----------
-    openInstall(mode = 'install') { this.inst = { ...this.inst, mode, file: null, q: '', results: [], searched: false, rmItems: [], sel: [], out: [], openKeys: [] }; this.drawer = 'install'; },
-    instSites() { return this.sites.filter(s => s.cms === this.inst.cms && s.enabled); },
+    openInstall(mode = 'install') { this.inst = { ...this.inst, mode, file: null, q: '', results: [], searched: false, rmItems: [], sel: [], out: [], openKeys: [], siteFilter: '', drag: false }; this.drawer = 'install'; },
+    instSites() {
+      const base = this.sites.filter(s => s.cms === this.inst.cms && s.enabled);
+      if (this.inst.mode !== 'remove') return base;
+      // in RIMOZIONE mostra solo i siti che hanno davvero almeno una delle estensioni
+      // scelte: selezionarne altri produceva solo errori "non trovata"
+      const have = new Set(this.inst.rmItems.flatMap(i => i.site_ids || []));
+      return base.filter(s => have.has(s.id));
+    },
+    // tiene la selezione dei siti coerente con le estensioni scelte
+    _pruneInstSel() {
+      const allowed = new Set(this.instSites().map(s => s.id));
+      this.inst.sel = this.inst.sel.filter(id => allowed.has(id));
+    },
     instToggleAll() { const ids = this.instSites().map(s => s.id); this.inst.sel = ids.every(i => this.inst.sel.includes(i)) ? [] : ids; },
-    async instSearch() {
-      if (!this.inst.q.trim()) return;
+    async instSearch(live = false) {
+      const q = this.inst.q.trim();
+      if (!q) { this.inst.results = []; this.inst.searched = false; return; }
+      if (live && q.length < 2) return;
       const r = await this.api(`/api/install/search?cms=${this.inst.cms}&q=${encodeURIComponent(this.inst.q)}`);
       if (r.ok) { this.inst.results = (await r.json()).results || []; this.inst.searched = true; }
     },
     instSelected(r) { return this.inst.rmItems.some(i => i.type === r.type && i.slug === r.slug); },
-    instToggle(r) { if (r.protected) return; this.instSelected(r) ? this.inst.rmItems = this.inst.rmItems.filter(i => !(i.type === r.type && i.slug === r.slug)) : this.inst.rmItems.push({ type: r.type, slug: r.slug, name: r.name, site_ids: r.site_ids }); },
+    instToggle(r) {
+      if (r.protected) return;
+      if (this.instSelected(r)) {
+        this.inst.rmItems = this.inst.rmItems.filter(i => !(i.type === r.type && i.slug === r.slug));
+      } else {
+        this.inst.rmItems.push({ type: r.type, slug: r.slug, name: r.name, site_ids: r.site_ids, site_details: r.site_details || [] });
+        // selezione ESPLICITA: scegliendo l'estensione si spuntano i siti che la hanno,
+        // poi si deseleziona chi non si vuole toccare (niente piu' "vuoto = tutti")
+        this.inst.sel = [...new Set([...this.inst.sel, ...(r.site_ids || [])])];
+      }
+      this._pruneInstSel();
+    },
+
+    // ---- operazioni in blocco: comandi del flusso guidato ----
+    instSetMode(m) {
+      if (this.inst.mode === m) return;
+      Object.assign(this.inst, { mode: m, sel: [], out: [], rmItems: [], results: [], searched: false, q: '', siteFilter: '', file: null, openKeys: [] });
+    },
+    instSetCms(c) {
+      if (this.inst.cms === c) return;
+      Object.assign(this.inst, { cms: c, sel: [], out: [], rmItems: [], results: [], searched: false, siteFilter: '', openKeys: [] });
+      if (this.inst.mode === 'remove' && this.inst.q.trim()) this.instSearch();
+    },
+    instCmsCount(c) { return this.sites.filter(s => s.cms === c && s.enabled).length; },
+    instVisibleSites() {
+      const f = (this.inst.siteFilter || '').trim().toLowerCase();
+      const list = this.instSites();
+      return f ? list.filter(s => (s.name || '').toLowerCase().includes(f) || (s.url || '').toLowerCase().includes(f) || (s.tags || '').toLowerCase().includes(f)) : list;
+    },
+    instToggleSite(id) { this.inst.sel = this.inst.sel.includes(id) ? this.inst.sel.filter(x => x !== id) : [...this.inst.sel, id]; },
+    instSelAll() { this.inst.sel = [...new Set([...this.inst.sel, ...this.instVisibleSites().map(s => s.id)])]; },
+    instSelNone() {
+      const vis = new Set(this.instVisibleSites().map(s => s.id));
+      this.inst.sel = (this.inst.siteFilter || '').trim() ? this.inst.sel.filter(id => !vis.has(id)) : [];
+    },
+    instFolders() {
+      const map = {};
+      for (const s of this.instSites()) for (const t of this.siteTags(s)) map[t] = (map[t] || 0) + 1;
+      return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0])).map(([tag, count]) => ({ tag, count }));
+    },
+    _instFolderIds(tag) { return this.instSites().filter(s => this.siteTags(s).includes(tag)).map(s => s.id); },
+    instFolderOn(tag) { const ids = this._instFolderIds(tag); return ids.length > 0 && ids.every(id => this.inst.sel.includes(id)); },
+    instToggleFolder(tag) {
+      const ids = this._instFolderIds(tag);
+      this.inst.sel = this.instFolderOn(tag) ? this.inst.sel.filter(id => !ids.includes(id)) : [...new Set([...this.inst.sel, ...ids])];
+    },
+    instSiteVersion(s) {
+      for (const it of this.inst.rmItems) {
+        const d = (it.site_details || []).find(x => x.id === s.id);
+        if (d) return d.version ? 'v' + d.version : '';
+      }
+      return '';
+    },
+    instDrop(e) {
+      this.inst.drag = false;
+      const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!f) return;
+      if (!/\.zip$/i.test(f.name)) { this.say('Serve un file .zip'); return; }
+      this.inst.file = f;
+    },
+    get instCanRun() {
+      if (this.inst.busy || !this.inst.sel.length) return false;
+      return this.inst.mode === 'install' ? !!this.inst.file : this.inst.rmItems.length > 0;
+    },
+    pl(n, one, many) { return n === 1 ? one : many; },   // singolare/plurale italiano
+    get instSummary() {
+      const n = this.inst.sel.length;
+      if (this.inst.mode === 'install') {
+        if (!this.inst.file) return 'Scegli lo zip da installare';
+        if (!n) return 'Scegli almeno un sito';
+        return `Installerai ${this.inst.file.name} su ${n} ${this.pl(n, 'sito', 'siti')}`;
+      }
+      const k = this.inst.rmItems.length;
+      if (!k) return 'Scegli cosa rimuovere';
+      if (!n) return 'Scegli almeno un sito';
+      return `Rimuoverai ${k} ${this.pl(k, 'estensione', 'estensioni')} da ${n} ${this.pl(n, 'sito', 'siti')}`;
+    },
+    instOutCount(kind) {
+      return this.inst.out.filter(o => kind === 'skip' ? o.skipped : (kind === 'ok' ? (o.ok && !o.skipped) : (!o.ok && !o.skipped))).length;
+    },
     instIsOpen(r) { return this.inst.openKeys.includes(r.type + '|' + r.slug); },
     instToggleOpen(r) { const k = r.type + '|' + r.slug; this.inst.openKeys = this.inst.openKeys.includes(k) ? this.inst.openKeys.filter(x => x !== k) : [...this.inst.openKeys, k]; },
     async runInstall() {
@@ -395,7 +489,11 @@ function sentinel() {
     },
     async runRemove() {
       if (!this.inst.rmItems.length) { this.say('Seleziona cosa rimuovere'); return; }
-      const ids = this.inst.sel.length ? this.inst.sel : [...new Set(this.inst.rmItems.flatMap(i => i.site_ids || []))];
+      // solo siti che hanno l'estensione: la selezione manuale viene intersecata con
+      // chi ce l'ha davvero, cosi' un clic sbagliato non genera errori
+      const have = [...new Set(this.inst.rmItems.flatMap(i => i.site_ids || []))];
+      const ids = this.inst.sel.length ? this.inst.sel.filter(id => have.includes(id)) : have;
+      if (!ids.length) { this.say('Nessuno dei siti selezionati ha le estensioni scelte'); return; }
       if (!confirm(`Rimuovere ${this.inst.rmItems.length} estensioni da ${ids.length} siti?`)) return;
       this.inst.busy = true; this.inst.out = [];
       try {
@@ -475,7 +573,7 @@ function sentinel() {
         // una nuova impostazione non richiede di ricordarsi di inserirla anche qui
         // (era successo con screenshot_every_hours: il valore non partiva e tornava al default).
         const NUM_KEYS = ['domain_scan_days', 'domain_parallel_lookups', 'expiry_warning_days',
-                          'expiry_critical_days', 'screenshot_every_hours'];
+                          'expiry_critical_days', 'screenshot_every_hours', 'history_retention_days'];
         const body = { domain_alert_days: da, component_alert_days: ca };
         for (const k of NUM_KEYS) {
           const v = parseInt(this.prefs[k], 10);
@@ -871,7 +969,140 @@ function sentinel() {
     statTrendH(m) { const max = (this.stats.trend && this.stats.trend.max) || 1; return m.updates ? Math.max(4, Math.round(m.updates * 130 / max)) + 'px' : '0px'; },
     statDelta(cur, prev) { const d = (cur || 0) - (prev || 0); const p = prev ? Math.round(d * 100 / prev) : null; return { d, p, cls: d > 0 ? 'ok' : (d < 0 ? 'err' : 'mut'), txt: (d > 0 ? '+' : '') + d + (p === null ? '' : ` (${d > 0 ? '+' : ''}${p}%)`) }; },
     statDeltaFail(cur, prev) { const x = this.statDelta(cur, prev); x.cls = x.d > 0 ? 'err' : (x.d < 0 ? 'ok' : 'mut'); return x; },
+    // ---- grafico andamento ----
+    // Scala "gentile": passo 1/2/5 x 10^n con al massimo 5 righe guida, cosi' le tacche
+    // dell'asse sono numeri tondi (50, 100, 150…) invece di valori come 62,5.
+    get trendScale() {
+      const ms = (this.stats.trend && this.stats.trend.months) || [];
+      const max = Math.max(1, ...ms.map(m => (m.updates || 0) + (m.failed || 0)));
+      const pow = Math.pow(10, Math.floor(Math.log10(max)));
+      let step = pow;
+      for (const c of [0.1, 0.2, 0.5, 1, 2, 5, 10]) {
+        const s = c * pow;
+        if (s >= 1 && Math.ceil(max / s) <= 5) { step = s; break; }
+      }
+      step = Math.max(1, Math.round(step));
+      const top = Math.ceil(max / step) * step;
+      const ticks = [];
+      for (let v = step; v <= top; v += step) ticks.push(v);
+      return { top, ticks };
+    },
+    trendY(v) { return Math.round(Math.max(0, v || 0) / (this.trendScale.top || 1) * 200); },   // 200 = altezza area grafico in CSS
+    get trendBest() {
+      const ms = (this.stats.trend && this.stats.trend.months) || [];
+      let best = null;
+      for (const m of ms) if (!best || (m.updates || 0) > (best.updates || 0)) best = m;
+      return best && best.updates ? { value: this.fmtNum(best.updates), label: this.shortMonth(best.label), period: best.period }
+                                   : { value: '—', label: '', period: '' };
+    },
+    get trendLast() {
+      const ms = (this.stats.trend && this.stats.trend.months) || [];
+      return ms.length ? ms[ms.length - 1] : { delta: null, label: '' };
+    },
+    fmtNum(v, d = 0) {
+      const n = Number(v || 0);
+      try { return n.toLocaleString((window.I18n && I18n.locale) || 'it', { maximumFractionDigits: d }); }
+      catch (e) { return String(n); }
+    },
+    trendShowVal(m) {
+      if (!((m.updates || 0) + (m.failed || 0))) return false;
+      // con 24 mesi i numeri si accavallano: solo selezionato, sotto il mouse e migliore
+      return this.stats.months <= 12 || m.period === this.stats.period || m.period === this.stats.hover || m.period === this.trendBest.period;
+    },
     shortMonth(label) { const p = (label || '').split(' '); return p.length > 1 ? p[0].slice(0, 3) + ' ' + p[1].slice(2) : label; },
+
+    // ---------- report dettagliato su richiesta ----------
+    async openDetailReport(ids = []) {
+      if (!this.drep.oldest) {
+        try {
+          const r = await this.api('/api/reports/periods');
+          if (r.ok) { const ps = (await r.json()).map(x => x.period).filter(Boolean).sort(); this.drep.oldest = ps[0] || this.curPeriod(); }
+        } catch (e) { }
+      }
+      Object.assign(this.drep, { filter: '', busy: false });
+      if (ids && ids.length) { this.drep.mode = 'pick'; this.drep.ids = [...new Set(ids)]; }
+      else if (this.route.page === 'sites' && this.route.folder && this.route.folder !== '__none') { this.drep.mode = 'folder'; this.drep.folder = this.route.folder; }
+      else { this.drep.mode = 'all'; }
+      if (!this.drep.from) this.drepRange('q3');
+      this.drawer = 'detailrep';
+    },
+    drepRange(key) {
+      const cur = this.curPeriod();
+      const map = { cur: [cur, cur], prev: [this.shiftPeriod(cur, -1), this.shiftPeriod(cur, -1)],
+                    q3: [this.shiftPeriod(cur, -2), cur], y1: [this.shiftPeriod(cur, -11), cur],
+                    all: [this.drep.oldest || this.shiftPeriod(cur, -11), cur] };
+      const [a, b] = map[key] || map.q3;
+      Object.assign(this.drep, { from: a, to: b, range: key });
+    },
+    // mesi selezionabili: dal primo mese con dati (o 24 mesi fa) a oggi, dal piu' recente
+    get drepMonths() {
+      const cur = this.curPeriod();
+      let start = this.drep.oldest && this.drep.oldest < this.shiftPeriod(cur, -23) ? this.drep.oldest : this.shiftPeriod(cur, -23);
+      const out = []; let p = cur, guard = 0;
+      while (p >= start && guard++ < 240) { out.push(p); p = this.shiftPeriod(p, -1); }
+      return out;
+    },
+    drepMonthLabel(p) {
+      // nome del mese nella lingua attiva dell'interfaccia (Intl, niente catalogo)
+      if (!p) return '';
+      try {
+        const lang = (window.I18n && I18n.locale) || 'it';
+        const s = new Date(+p.slice(0, 4), +p.slice(5, 7) - 1, 1).toLocaleDateString(lang, { month: 'long', year: 'numeric' });
+        return s.charAt(0).toUpperCase() + s.slice(1);
+      } catch (e) { return p; }
+    },
+    get drepFolders() { return this.allTags || []; },
+    drepSites() {
+      const f = (this.drep.filter || '').trim().toLowerCase();
+      const list = this.sites.filter(s => s.enabled !== false);
+      return f ? list.filter(s => (s.name || '').toLowerCase().includes(f) || (s.url || '').toLowerCase().includes(f) || (s.tags || '').toLowerCase().includes(f)) : list;
+    },
+    drepToggleSite(id) { this.drep.ids = this.drep.ids.includes(id) ? this.drep.ids.filter(x => x !== id) : [...this.drep.ids, id]; },
+    drepSelAll() { this.drep.ids = [...new Set([...this.drep.ids, ...this.drepSites().map(s => s.id)])]; },
+    drepSelNone() {
+      const vis = new Set(this.drepSites().map(s => s.id));
+      this.drep.ids = (this.drep.filter || '').trim() ? this.drep.ids.filter(id => !vis.has(id)) : [];
+    },
+    get drepTargetCount() {
+      if (this.drep.mode === 'pick') return this.drep.ids.length;
+      if (this.drep.mode === 'folder') return this.drep.folder ? this.folderSites(this.drep.folder).length : 0;
+      return this.sites.filter(s => s.enabled !== false).length;
+    },
+    get drepCanRun() {
+      if (this.drep.busy || !this.drep.from || !this.drep.to) return false;
+      if (this.drep.mode === 'pick') return this.drep.ids.length > 0;
+      if (this.drep.mode === 'folder') return !!this.drep.folder;
+      return true;
+    },
+    get drepSummary() {
+      const n = this.drepTargetCount;
+      const per = this.drep.from === this.drep.to ? this.drepMonthLabel(this.drep.from || this.curPeriod())
+                : `${this.drepMonthLabel(this.drep.from)} – ${this.drepMonthLabel(this.drep.to)}`;
+      if (!n) return 'Scegli almeno un sito';
+      return `${this.drep.format === 'csv' ? 'CSV' : 'PDF'} · ${n} ${this.pl(n, 'sito', 'siti')} · ${per}`;
+    },
+    async downloadDetailReport() {
+      if (!this.drepCanRun) return;
+      this.drep.busy = true;
+      try {
+        let a = this.drep.from, b = this.drep.to; if (a > b) [a, b] = [b, a];
+        const body = { from: a, to: b, history: this.drep.history, failed: this.drep.failed, format: this.drep.format,
+                       site_ids: this.drep.mode === 'pick' ? this.drep.ids : [],
+                       folder: this.drep.mode === 'folder' ? this.drep.folder : '' };
+        const r = await this.api('/api/reports/detail', { method: 'POST', body: JSON.stringify(body) });
+        if (!r.ok) { const d = await r.json().catch(() => ({})); this.say(d.detail || 'Report non generato'); return; }
+        const blob = await r.blob();
+        const cd = r.headers.get('content-disposition') || '';
+        const m = cd.match(/filename="?([^";]+)"?/);
+        const el = document.createElement('a');
+        el.href = URL.createObjectURL(blob);
+        el.download = (m && m[1]) || `report-dettagliato.${this.drep.format}`;
+        document.body.appendChild(el); el.click();
+        setTimeout(() => { URL.revokeObjectURL(el.href); el.remove(); }, 2000);
+        this.say('Report scaricato');
+      } catch (e) { this.say('Report non generato'); }
+      finally { this.drep.busy = false; }
+    },
 
     // ---------- report mensile ----------
     async loadReports() {

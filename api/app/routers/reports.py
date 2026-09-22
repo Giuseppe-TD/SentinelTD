@@ -244,3 +244,53 @@ async def send_report_for(period: str, scope: str = "") -> dict:
     return {"sent": True, "period": period, "scope": scope, "scope_label": data["scope_label"],
             "filename": filename, "pdf": blob is not None,
             "updates": data["total_updates"], "sites": data["sites_touched"]}
+
+
+@router.post("/detail", dependencies=[Depends(require_auth)])
+async def detail_report(payload: dict = Body(...), s: AsyncSession = Depends(get_session)):
+    """Report dettagliato su richiesta: uno, alcuni o tutti i siti, su un intervallo di mesi.
+    Scaricato via fetch con l'header Authorization (niente token in query string)."""
+    from .. import report_detail as rd
+    from ..models import Site
+
+    p_from = str(payload.get("from") or rep.current_period())
+    p_to = str(payload.get("to") or rep.current_period())
+    if not (rd.valid_period(p_from) and rd.valid_period(p_to)):
+        raise HTTPException(422, "Periodo non valido (formato AAAA-MM)")
+    if p_from > p_to:
+        p_from, p_to = p_to, p_from
+
+    sites = (await s.execute(select(Site))).scalars().all()
+    folder = str(payload.get("folder") or "").strip()
+    ids = [int(x) for x in (payload.get("site_ids") or []) if str(x).isdigit()]
+    if folder:
+        key = folder.lower()
+        ids = [x.id for x in sites if any(t.strip().lower() == key or t.strip().lower().startswith(key + "/")
+                                           for t in (x.tags or "").split(","))]
+        scope_label = folder
+    elif ids:
+        chosen = [x for x in sites if x.id in set(ids)]
+        from ..i18n import t as _t
+        scope_label = chosen[0].name if len(chosen) == 1 else f"{len(chosen)} {_t('siti selezionati')}"
+    else:
+        from ..i18n import t as _t
+        scope_label = _t("Tutti i siti")
+    if (folder or payload.get("site_ids")) and not ids:
+        raise HTTPException(422, "Nessun sito corrisponde alla scelta")
+
+    data = await rd.gather(p_from, p_to, ids or None,
+                           include_history=bool(payload.get("history", True)),
+                           include_failed=bool(payload.get("failed", True)))
+    slug = rep.scope_slug(folder) if folder else ("sito-" + str(ids[0]) if len(ids) == 1 else
+                                                   (f"{len(ids)}-siti" if ids else "tutti"))
+    base = f"report-dettagliato-{p_from}" + ("" if p_from == p_to else f"_{p_to}") + f"-{slug}"
+
+    if str(payload.get("format", "pdf")).lower() == "csv":
+        return Response(rd.render_csv(data), media_type="text/csv; charset=utf-8",
+                        headers={"Content-Disposition": f'attachment; filename="{base}.csv"'})
+    pdf, html = await rd.render_pdf(data, scope_label)
+    if pdf is None:
+        return Response(html.encode("utf-8"), media_type="text/html; charset=utf-8",
+                        headers={"Content-Disposition": f'attachment; filename="{base}.html"'})
+    return Response(pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{base}.pdf"'})

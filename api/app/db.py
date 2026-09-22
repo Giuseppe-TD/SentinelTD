@@ -55,6 +55,31 @@ async def run_migrations(conn) -> None:
         CREATE UNIQUE INDEX IF NOT EXISTS ux_update_monthly_key
         ON update_monthly (period, site_id, ext_type, slug)
     """))
+    # Versione di partenza nel rollup (per il report dettagliato "dalla X alla Y").
+    await conn.execute(text("ALTER TABLE update_monthly ADD COLUMN IF NOT EXISTS first_version VARCHAR(64) NOT NULL DEFAULT ''"))
+    done_fv = (await conn.execute(text(
+        "SELECT value FROM app_settings WHERE key = 'migr:monthly_first_version_done'"
+    ))).scalar()
+    if not done_fv:
+        # recupera la versione di partenza dallo storico ancora disponibile: per ogni
+        # (mese, sito, estensione) la from_version del PRIMO aggiornamento del mese
+        await conn.execute(text("""
+            UPDATE update_monthly m SET first_version = h.from_version
+            FROM (
+                SELECT DISTINCT ON (to_char(created_at, 'YYYY-MM'), site_id, ext_type, slug)
+                       to_char(created_at, 'YYYY-MM') AS period, site_id, ext_type, slug, from_version
+                FROM update_history
+                WHERE from_version <> ''
+                ORDER BY to_char(created_at, 'YYYY-MM'), site_id, ext_type, slug, created_at ASC
+            ) h
+            WHERE m.period = h.period AND m.site_id = h.site_id AND m.ext_type = h.ext_type
+              AND m.slug = h.slug AND m.first_version = ''
+        """))
+        await conn.execute(text(
+            "INSERT INTO app_settings (key, value) VALUES ('migr:monthly_first_version_done', '1') "
+            "ON CONFLICT (key) DO UPDATE SET value = '1'"
+        ))
+
     # Backfill una tantum dallo storico ancora presente (max 7 giorni): evita un report
     # vuoto se il primo invio cade poco dopo l'aggiornamento del sistema.
     done_roll = (await conn.execute(text(

@@ -264,4 +264,6 @@ class UpdateMonthly(Base):
     ok_count: Mapped[int] = mapped_column(Integer, default=0)
     fail_count: Mapped[int] = mapped_column(Integer, default=0)
     last_version: Mapped[str] = mapped_column(String(64), default="")
+    # versione PRIMA del primo aggiornamento del mese: con last_version da' il "dalla X alla Y"
+    first_version: Mapped[str] = mapped_column(String(64), default="")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

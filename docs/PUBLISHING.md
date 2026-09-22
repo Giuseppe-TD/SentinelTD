@@ -4,7 +4,7 @@ These instructions publish **source code**, not a running service. The applicati
 
 ## 1. Prepare your local folder
 
-Extract the clean project ZIP and open a terminal **inside this project's folder**, where `README.md`, `.gitignore` and `docker-compose.yml` are located. Publish the extracted files, not the ZIP itself. Keep each of the three applications in a separate repository.
+Extract the clean project ZIP and open a terminal **inside this project's folder**, where `README.md`, `.gitignore` and `docker-compose.yml` are located. Publish the extracted files, not the ZIP itself.
 
 Install Git and sign in to GitHub. If using HTTPS, Git Credential Manager can open your browser for authentication. Never put an access token in a remote URL.
 
@@ -14,7 +14,7 @@ The release contains `.env.example` with blank secrets. Copy it to `.env` only o
 
 On GitHub, choose **New repository**, select its owner, choose a name and visibility, and click **Create repository**. Do not initialize it with a README, license or `.gitignore`: this folder already has its own files.
 
-Suggested names: `panopticon-lite`, `videochat`, `catasync`. A public repository makes the source and included assets visible to everyone. No project license was present in the archives; select a license appropriate to the rights you hold before granting reuse rights. Existing third-party licenses still apply.
+Suggested name: `sentinel-td`. A public repository makes the source and included assets visible to everyone. No project license was present in the archives; select a license appropriate to the rights you hold before granting reuse rights. Existing third-party licenses still apply.
 
 ## 3. Commit and push
 
@@ -27,7 +27,7 @@ git status --short
 git add .
 git diff --cached --stat
 git diff --cached --name-only
-git commit -m "Prepare multilingual public release"
+git commit -m "Sentinel TD 2.2.0"
 git remote add origin https://github.com/YOUR_ACCOUNT/YOUR_REPOSITORY.git
 git push -u origin main
 ```
@@ -50,8 +50,8 @@ Open the repository and verify that the README is displayed, the file tree is co
 For a versioned release after verification:
 
 ```sh
-git tag v1.1.0-i18n
-git push origin v1.1.0-i18n
+git tag v2.2.0
+git push origin v2.2.0
 ```
 
 Use another unused version tag if this one already exists. You can then create a GitHub Release from the tag. Do not attach archives containing your local `.env` or runtime data.
@@ -67,6 +67,16 @@ git push
 ```
 
 Deploy separately on your server using the main README. Never use this clean release to overwrite a production database.
+
+## 6. Connector packages
+
+Connector sources live in `connectors/`. Build the installable zips locally; the registration key is read from the environment and written only into the generated WordPress package:
+
+```sh
+SENTINEL_HUB_KEY=your-registration-key python scripts/build_connectors.py
+```
+
+The packages are created in `dist/`, which is excluded by `.gitignore`. Never commit them: the WordPress package contains the key.
 
 ## References
 

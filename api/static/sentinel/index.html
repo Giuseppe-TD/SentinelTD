@@ -231,31 +231,73 @@
                 <div class="sp"></div>
                 <span class="small mut">Perimetro</span>
                 <select class="input" style="max-width:210px" x-model="stats.scope" @change="loadStats(false)">
-                  <template x-for="s in stats.scopes" :key="'sc'+s.key"><option :value="s.key" x-text="s.label"></option></template>
+                  <template x-for="s in stats.scopes" :key="'sc'+s.key"><option :value="s.key" :selected="s.key===stats.scope" x-text="s.label"></option></template>
                 </select>
-                <button class="btn" @click="openTokenLink(() => statsPdfUrl())" title="Scarica in PDF quello che vedi: mese selezionato o confronto">⬇ Scarica PDF</button>
+                <button class="btn" @click="openTokenLink(() => statsPdfUrl())" title="Scarica in PDF quello che vedi: mese selezionato o confronto"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg> Scarica PDF</button>
               </div>
 
               <!-- ANDAMENTO -->
-              <div class="row" style="margin-top:16px;flex-wrap:wrap;gap:10px">
-                <div style="flex:1;min-width:220px">
-                  <b style="font-size:13px">Andamento</b>
+              <div class="tr-head">
+                <div class="tr-title">
+                  <b>Andamento</b>
                   <div class="small mut">Aggiornamenti applicati per mese — <b>clicca una barra</b> per vedere il dettaglio di quel mese</div>
                 </div>
-                <select class="input small" style="max-width:120px" x-model.number="stats.months" @change="loadStats(false)">
-                  <option value="6">6 mesi</option><option value="12">12 mesi</option><option value="24">24 mesi</option>
-                </select>
+                <div class="seg">
+                  <button type="button" :class="stats.months===6?'on':''" @click="stats.months=6;loadStats(false)">6 mesi</button>
+                  <button type="button" :class="stats.months===12?'on':''" @click="stats.months=12;loadStats(false)">12 mesi</button>
+                  <button type="button" :class="stats.months===24?'on':''" @click="stats.months=24;loadStats(false)">24 mesi</button>
+                </div>
               </div>
-              <div class="bars" style="height:150px;margin-top:10px" x-show="!statEmptyWindow">
-                <template x-for="m in (stats.trend?stats.trend.months:[])" :key="'t'+m.period">
-                  <div class="b" style="cursor:pointer" :class="m.period===stats.period?'sel':''"
-                       :title="m.label+': '+m.updates+' aggiornamenti · '+m.sites+' siti · '+m.failed+' falliti'"
-                       @click="pickMonth(m.period)">
-                    <div class="bv" x-show="m.updates" x-text="m.updates"></div>
-                    <div class="seg ok" :style="'height:'+statTrendH(m)+';opacity:'+(m.period===stats.period?1:.55)"></div>
-                    <div class="lb" x-text="shortMonth(m.label)"></div>
+
+              <div class="tr-kpis" x-show="!statEmptyWindow && stats.trend">
+                <div><span class="k">Totale nel periodo</span><b x-text="fmtNum(stats.trend && stats.trend.total)"></b></div>
+                <div><span class="k">Media mensile</span><b x-text="fmtNum(stats.trend && stats.trend.avg, 1)"></b></div>
+                <div><span class="k">Mese migliore</span><b><span x-text="trendBest.value"></span> <small x-text="trendBest.label"></small></b></div>
+                <div><span class="k">Rispetto al mese prima</span><b :class="deltaCls(trendLast)" x-text="deltaTxt(trendLast)"></b></div>
+              </div>
+
+              <div class="tr-chart" x-show="!statEmptyWindow" @mouseleave="stats.hover=null">
+                <div class="tr-y">
+                  <template x-for="t in trendScale.ticks" :key="'y'+t"><span :style="'bottom:'+trendY(t)+'px'" x-text="fmtNum(t)"></span></template>
+                  <span style="bottom:0">0</span>
+                </div>
+                <div class="tr-plot">
+                  <template x-for="t in trendScale.ticks" :key="'g'+t"><div class="tr-grid" :style="'bottom:'+trendY(t)+'px'"></div></template>
+                  <div class="tr-grid base" style="bottom:0"></div>
+                  <div class="tr-avg" x-show="stats.trend && stats.trend.avg>0" :style="'bottom:'+trendY(stats.trend ? stats.trend.avg : 0)+'px'">
+                    <span><span>media</span> <span x-text="fmtNum(stats.trend && stats.trend.avg, 1)"></span></span>
                   </div>
-                </template>
+                  <div class="tr-cols">
+                    <template x-for="(m, i) in (stats.trend ? stats.trend.months : [])" :key="'c'+m.period">
+                      <div class="tr-col" :class="{ sel: m.period===stats.period, hov: stats.hover===m.period }"
+                           @mouseenter="stats.hover=m.period" @click="pickMonth(m.period)">
+                        <div class="tr-val" x-show="trendShowVal(m)" :style="'bottom:'+(trendY((m.updates||0)+(m.failed||0))+6)+'px'" x-text="fmtNum(m.updates)"></div>
+                        <div class="tr-stack" :style="'height:'+trendY((m.updates||0)+(m.failed||0))+'px'">
+                          <div class="tr-fail" x-show="m.failed" :style="'height:'+trendY(m.failed)+'px'"></div>
+                          <div class="tr-ok" :style="'height:'+trendY(m.updates)+'px'"></div>
+                        </div>
+                        <div class="tr-tip" x-show="stats.hover===m.period"
+                             :class="i >= stats.trend.months.length/2 ? 'r' : ''">
+                          <b x-text="m.label"></b>
+                          <div><span class="dotc ok"></span><span x-text="fmtNum(m.updates)"></span> <span>aggiornamenti</span></div>
+                          <div x-show="m.failed"><span class="dotc err"></span><span x-text="fmtNum(m.failed)"></span> <span>non riusciti</span></div>
+                          <div class="mut"><span x-text="m.sites"></span> <span>siti</span> · <span x-text="m.components"></span> <span>componenti</span></div>
+                          <div x-show="m.delta!==null && m.delta!==undefined"><span :class="deltaCls(m)" x-text="deltaTxt(m)"></span> <span class="mut">rispetto al mese prima</span></div>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+                <div class="tr-x">
+                  <template x-for="(m, i) in (stats.trend ? stats.trend.months : [])" :key="'x'+m.period">
+                    <span :class="m.period===stats.period ? 'sel' : ''" x-text="(stats.months<24 || i%2===0 || m.period===stats.period) ? shortMonth(m.label) : ''"></span>
+                  </template>
+                </div>
+              </div>
+              <div class="tr-legend" x-show="!statEmptyWindow">
+                <span><i class="sw ok"></i>Riusciti</span>
+                <span><i class="sw err"></i>Non riusciti</span>
+                <span><i class="sw avg"></i>Media mensile</span>
               </div>
               <div class="empty" x-show="statEmptyWindow" style="padding:28px">Nessun aggiornamento registrato negli ultimi <span x-text="stats.months"></span> mesi in questo perimetro.</div>
 
@@ -268,7 +310,7 @@
                     <div class="row" style="gap:4px">
                       <button class="btn icon" :disabled="!canShiftStat(-1)" @click="shiftStatMonth(-1)" title="Mese precedente (freccia ←)">‹</button>
                       <select class="input" style="max-width:190px" x-model="stats.period" @change="pickMonth(stats.period)">
-                        <template x-for="m in statMonths" :key="'pp'+m.period"><option :value="m.period" x-text="m.label+(m.updates?' — '+m.updates+' update':'')"></option></template>
+                        <template x-for="m in statMonths" :key="'pp'+m.period"><option :value="m.period" :selected="m.period===stats.period" x-text="m.label+(m.updates?' — '+m.updates+' update':'')"></option></template>
                       </select>
                       <button class="btn icon" :disabled="!canShiftStat(1)" @click="shiftStatMonth(1)" title="Mese successivo (freccia →)">›</button>
                     </div>
@@ -319,11 +361,11 @@
                   <div class="row" style="flex-wrap:wrap;gap:8px">
                     <span class="small mut">Confronta</span>
                     <select class="input" style="max-width:170px" x-model="stats.cmpA" @change="loadCompare()">
-                      <template x-for="p in stats.periods" :key="'ca'+p.period"><option :value="p.period" x-text="p.label"></option></template>
+                      <template x-for="p in stats.periods" :key="'ca'+p.period"><option :value="p.period" :selected="p.period===stats.cmpA" x-text="p.label"></option></template>
                     </select>
                     <span class="small mut">con</span>
                     <select class="input" style="max-width:170px" x-model="stats.cmpB" @change="loadCompare()">
-                      <template x-for="p in stats.periods" :key="'cb'+p.period"><option :value="p.period" x-text="p.label"></option></template>
+                      <template x-for="p in stats.periods" :key="'cb'+p.period"><option :value="p.period" :selected="p.period===stats.cmpB" x-text="p.label"></option></template>
                     </select>
                   </div>
                   <template x-if="stats.cmp">
@@ -447,6 +489,7 @@
               <button class="btn sm primary" @click="updateSelected()">Aggiorna ora</button>
               <button class="btn sm" @click="openTags()">Cartelle ±</button>
               <button class="btn sm" @click="shootBulk(true)" title="Rigenera l'anteprima dei siti selezionati">🖼 Anteprime</button>
+              <button class="btn sm" @click="openDetailReport(selIds)" title="Report dettagliato dei siti selezionati">📄 Report</button>
               <button class="btn sm" @click="setAutoSelected(true)">Auto-update ON</button>
               <button class="btn sm" @click="setAutoSelected(false)">Auto-update OFF</button>
               <div class="sp"></div>
@@ -467,6 +510,7 @@
               <button class="btn sm primary" @click="updateNow(detail)" x-show="hasUpd(detail)">Aggiorna tutto</button>
               <button class="btn sm" @click="goAdmin(detail)">Apri admin ↗</button>
               <button class="btn sm" :class="detail.notifications_silenced?'danger':''" @click="toggleSilence(detail)" x-text="detail.notifications_silenced?'🔕 Riattiva notifiche':'🔔 Silenzia'"></button>
+              <button class="btn sm" @click="openDetailReport([detail.id])" title="Report dettagliato di questo sito">📄 Report</button>
               <button class="btn sm" @click="openEdit(detail)">Modifica</button>
             </div>
             <div class="tabs">
@@ -640,12 +684,13 @@
               <div><h1 class="page-title">Report mensile</h1><div class="page-sub">PDF intestato con il riepilogo del mese, inviato per email in automatico.</div></div>
               <div class="sp"></div>
               <select class="input" style="max-width:210px" x-model="rep.scope" @change="repScopeChanged()">
-                <template x-for="s in rep.scopes" :key="s.key"><option :value="s.key" x-text="s.label+' ('+s.sites+' siti)'"></option></template>
+                <template x-for="s in rep.scopes" :key="s.key"><option :value="s.key" :selected="s.key===rep.scope" x-text="s.label+' ('+s.sites+' siti)'"></option></template>
               </select>
               <select class="input" style="max-width:190px" x-model="rep.period" @change="repScopeChanged()">
-                <template x-for="p in rep.periods" :key="p.period"><option :value="p.period" x-text="p.label+' — '+p.updates+' update'"></option></template>
+                <template x-for="p in rep.periods" :key="p.period"><option :value="p.period" :selected="p.period===rep.period" x-text="p.label+' — '+p.updates+' update'"></option></template>
               </select>
-              <button class="btn" @click="openTokenLink(() => reportPdfUrl())">⬇ Scarica PDF</button>
+              <button class="btn" @click="openTokenLink(() => reportPdfUrl())"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg> Scarica PDF</button>
+              <button class="btn" @click="openDetailReport()" title="Report sito per sito con versioni e cronologia, su un periodo a scelta">📄 Report dettagliato</button>
               <button class="btn" :disabled="rep.busy" @click="sendReportNow(false)">Invia questo</button>
               <button class="btn primary" :disabled="rep.busy||!repEnabledCount" @click="sendReportNow(true)"><span class="spinner" x-show="rep.busy"></span> Invia tutti (<span x-text="repEnabledCount"></span>)</button>
             </div>
@@ -941,6 +986,7 @@
                   <div class="grid two compact-grid">
                     <div class="field"><label>Riscansiona registri ogni</label><div class="input-suffix"><input class="input" type="number" min="1" max="90" x-model.number="prefs.domain_scan_days"><span>giorni</span></div></div>
                     <div class="field"><label>Lookup domini simultanei</label><input class="input" type="number" min="1" max="8" x-model.number="prefs.domain_parallel_lookups"></div>
+                    <div class="field"><label>Conserva la cronologia dettagliata per</label><div class="input-suffix"><input class="input" type="number" min="7" max="3650" x-model.number="prefs.history_retention_days"><span>giorni</span></div><div class="hint">Serve al report dettagliato ("dalla versione X alla Y" per ogni aggiornamento). I totali mensili restano per sempre.</div></div>
                     <div class="field"><label>Aggiorna anteprime siti ogni</label><div class="input-suffix"><input class="input" type="number" min="1" max="720" x-model.number="prefs.screenshot_every_hours"><span>ore</span></div>
                       <button class="btn sm" style="margin-top:6px" @click="shootBulk(false)">🖼 Rigenera tutte adesso</button></div>
                     <div class="field"><label>Soglia gialla</label><div class="input-suffix"><input class="input" type="number" min="1" x-model.number="prefs.expiry_warning_days"><span>giorni</span></div></div>
@@ -1041,62 +1087,276 @@
   </div></div>
 </template>
 
-<!-- ===================== DRAWER: INSTALLA / RIMUOVI ===================== -->
+<!-- ===================== DRAWER: REPORT DETTAGLIATO ===================== -->
+<template x-if="token&&drawer==='detailrep'">
+  <div><div class="overlay" @click="drawer=null"></div>
+  <div class="drawer bulk" @keydown.escape.window="drawer=null">
+    <div class="head">
+      <div>
+        <h2>Report dettagliato</h2>
+        <div class="small mut">Sito per sito: quante volte è stato aggiornato ogni componente e da quale versione a quale</div>
+      </div>
+      <div class="sp"></div>
+      <button class="btn icon ghost" @click="drawer=null" title="Chiudi">✕</button>
+    </div>
+
+    <div class="body">
+      <!-- 1 · PERIODO -->
+      <section class="bk-step">
+        <div class="bk-h"><span class="bk-n">1</span><span>Periodo</span></div>
+        <div class="chips" style="margin-bottom:12px">
+          <span class="fchip" :class="drep.range==='cur'?'on':''" @click="drepRange('cur')">Questo mese</span>
+          <span class="fchip" :class="drep.range==='prev'?'on':''" @click="drepRange('prev')">Mese scorso</span>
+          <span class="fchip" :class="drep.range==='q3'?'on':''" @click="drepRange('q3')">Ultimi 3 mesi</span>
+          <span class="fchip" :class="drep.range==='y1'?'on':''" @click="drepRange('y1')">Ultimi 12 mesi</span>
+          <span class="fchip" :class="drep.range==='all'?'on':''" @click="drepRange('all')">Tutto lo storico</span>
+        </div>
+        <div class="bk-range">
+          <div class="field"><label>Dal mese</label>
+            <select class="input" x-model="drep.from" @change="drep.range=''">
+              <template x-for="p in drepMonths" :key="'f'+p"><option :value="p" :selected="p===drep.from" x-text="drepMonthLabel(p)"></option></template>
+            </select></div>
+          <div class="bk-range-arrow">→</div>
+          <div class="field"><label>Al mese</label>
+            <select class="input" x-model="drep.to" @change="drep.range=''">
+              <template x-for="p in drepMonths" :key="'t'+p"><option :value="p" :selected="p===drep.to" x-text="drepMonthLabel(p)"></option></template>
+            </select></div>
+        </div>
+      </section>
+
+      <!-- 2 · SITI -->
+      <section class="bk-step">
+        <div class="bk-h"><span class="bk-n">2</span><span>Quali siti</span>
+          <span class="sp"></span><span class="badge" :class="drepTargetCount?'acc':''"><span x-text="drepTargetCount"></span> <span x-text="pl(drepTargetCount,'sito','siti')"></span></span></div>
+        <div class="seg" style="margin-bottom:12px">
+          <button type="button" :class="drep.mode==='all'?'on':''" @click="drep.mode='all'">Tutti i siti</button>
+          <button type="button" :class="drep.mode==='folder'?'on':''" @click="drep.mode='folder'">Una cartella</button>
+          <button type="button" :class="drep.mode==='pick'?'on':''" @click="drep.mode='pick'">Scelgo io</button>
+        </div>
+        <template x-if="drep.mode==='folder'">
+          <div class="chips">
+            <template x-for="f in drepFolders" :key="'df'+f">
+              <span class="fchip" :class="drep.folder===f?'on':''" @click="drep.folder=f"><span x-text="f"></span><span class="n" x-text="folderSites(f).length"></span></span>
+            </template>
+          </div>
+        </template>
+        <template x-if="drep.mode==='pick'">
+          <div>
+            <div class="bk-tools">
+              <div class="search"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input class="input" x-model="drep.filter" placeholder="Filtra siti…"></div>
+              <button type="button" class="btn sm bk-all" @click="drepSelAll()">✓ Seleziona tutti</button>
+              <button type="button" class="btn sm" @click="drepSelNone()" :disabled="!drep.ids.length">Nessuno</button>
+            </div>
+            <div class="bk-sites">
+              <template x-for="s in drepSites()" :key="'ds'+s.id">
+                <label class="bk-site" :class="drep.ids.includes(s.id)?'sel':''">
+                  <input type="checkbox" :checked="drep.ids.includes(s.id)" @change="drepToggleSite(s.id)">
+                  <span class="site-thumb bk-thumb">
+                    <img x-show="s.shot_path" :src="thumbUrl(s)" loading="lazy" alt="" @error="$event.target.style.visibility='hidden'">
+                    <span class="ini" x-show="!s.shot_path" x-text="initials(s.name)"></span>
+                  </span>
+                  <span class="bk-site-txt"><span class="name" x-text="s.name"></span><span class="url" x-text="s.url.replace(/^https?:\/\//,'')"></span></span>
+                  <span class="cms" :class="s.cms" x-text="s.cms==='wp'?'WP':'J'"></span>
+                </label>
+              </template>
+              <div class="empty" x-show="!drepSites().length" style="padding:18px">Nessun sito corrisponde al filtro</div>
+            </div>
+          </div>
+        </template>
+      </section>
+
+      <!-- 3 · CONTENUTO E FORMATO -->
+      <section class="bk-step">
+        <div class="bk-h"><span class="bk-n">3</span><span>Contenuto e formato</span></div>
+        <label class="check bk-opt"><input type="checkbox" checked disabled> <span><b>Riepilogo per componente</b><span class="small mut">quante volte è stato aggiornato e da quale versione a quale</span></span></label>
+        <label class="check bk-opt"><input type="checkbox" x-model="drep.history"> <span><b>Cronologia di ogni singolo aggiornamento</b><span class="small mut">data, versioni ed esito — il report diventa più lungo</span></span></label>
+        <label class="check bk-opt"><input type="checkbox" x-model="drep.failed"> <span><b>Includi gli aggiornamenti non riusciti</b><span class="small mut">con il motivo dell'errore</span></span></label>
+        <div class="bk-opts">
+          <div class="seg">
+            <button type="button" :class="drep.format==='pdf'?'on':''" @click="drep.format='pdf'">PDF</button>
+            <button type="button" :class="drep.format==='csv'?'on':''" @click="drep.format='csv'">CSV (Excel)</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="foot bk-foot">
+      <div class="bk-summary" :class="drepCanRun?'ready':''" x-text="drepSummary"></div>
+      <button class="btn" @click="drawer=null">Chiudi</button>
+      <button class="btn primary" :disabled="!drepCanRun" @click="downloadDetailReport()">
+        <span class="spinner" x-show="drep.busy"></span> <span><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg> Scarica</span>
+      </button>
+    </div>
+  </div></div>
+</template>
+
+<!-- ===================== DRAWER: INSTALLA / RIMUOVI (flusso guidato) ===================== -->
 <template x-if="token&&drawer==='install'">
   <div><div class="overlay" @click="drawer=null"></div>
-  <div class="drawer" style="width:min(680px,100vw)" @keydown.escape.window="drawer=null">
+  <div class="drawer bulk" @keydown.escape.window="drawer=null">
     <div class="head">
-      <div class="tabs" style="margin:0;border:none"><button :class="inst.mode==='install'?'on':''" @click="inst.mode='install'">Installa</button><button :class="inst.mode==='remove'?'on':''" @click="inst.mode='remove'">Rimuovi</button></div>
-      <div class="sp"></div><button class="btn icon ghost" @click="drawer=null">✕</button>
-    </div>
-    <div class="body">
-      <div class="field"><label>Piattaforma</label><select class="input" x-model="inst.cms" @change="inst.sel=[];inst.results=[];inst.rmItems=[]"><option value="wp">WordPress</option><option value="joomla">Joomla</option></select></div>
-
-      <template x-if="inst.mode==='install'">
-        <div>
-          <div class="field"><label>Pacchetto (.zip)</label><input type="file" accept=".zip" @change="inst.file=$event.target.files[0]"></div>
-          <div class="row" x-show="inst.cms==='wp'"><div class="field" style="flex:1"><label>Tipo</label><select class="input" x-model="inst.kind"><option value="plugin">Plugin</option><option value="theme">Tema</option></select></div><label class="check" style="margin-top:14px"><input type="checkbox" x-model="inst.activate"> Attiva dopo l'installazione</label></div>
-        </div>
-      </template>
-
-      <template x-if="inst.mode==='remove'">
-        <div>
-          <div class="field"><label>Cerca estensione</label><div class="row"><input class="input" x-model="inst.q" @keydown.enter="instSearch()" placeholder="nome o slug"><button class="btn" @click="instSearch()">Cerca</button></div></div>
-          <div x-show="inst.searched&&!inst.results.length" class="empty">Nessun risultato</div>
-          <template x-for="r in inst.results" :key="r.type+'|'+r.slug">
-            <div style="border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px" :style="r.protected?'opacity:.5':''">
-              <label class="check" style="align-items:flex-start">
-                <input type="checkbox" :disabled="r.protected" :checked="instSelected(r)" @change="instToggle(r)" style="margin-top:3px">
-                <div style="flex:1;min-width:0">
-                  <div><b x-text="r.name"></b> <span class="badge" x-text="r.type"></span> <span class="badge" x-show="r.protected">protetto</span></div>
-                  <div class="mono small mut" x-text="r.slug"></div>
-                  <div class="small" x-show="(r.versions||[]).length"><span class="mut">versione:</span> <span x-text="(r.versions||[]).map(v=>'v'+v).join(' · ')"></span> <span class="badge warn" x-show="(r.versions||[]).length>1">miste</span></div>
-                </div>
-                <button type="button" class="btn sm ghost" @click.prevent.stop="instToggleOpen(r)" x-text="'su '+r.count+' siti '+(instIsOpen(r)?'▴':'▾')"></button>
-              </label>
-              <div x-show="instIsOpen(r)" style="padding:6px 0 0 28px">
-                <template x-for="d in (r.site_details||[])" :key="d.id"><div class="row small" style="padding:2px 0"><span style="flex:1" x-text="d.name"></span><span class="mono" x-text="d.version?'v'+d.version:'—'"></span><span class="badge warn" x-show="d.update_available" x-text="'→ '+(d.new_version||'update')"></span></div></template>
-              </div>
-            </div>
-          </template>
-        </div>
-      </template>
-
-      <div class="row" style="margin:14px 0 6px"><label style="font-size:12px;color:var(--txt-2);font-weight:500">Siti di destinazione</label><div class="sp"></div><button class="btn sm ghost" @click="instToggleAll()">Seleziona tutti</button></div>
-      <div style="max-height:220px;overflow:auto;border:1px solid var(--bd);border-radius:10px">
-        <template x-for="s in instSites()" :key="s.id">
-          <label class="check" style="padding:7px 12px;border-bottom:1px solid var(--bd)"><input type="checkbox" :checked="inst.sel.includes(s.id)" @change="inst.sel=inst.sel.includes(s.id)?inst.sel.filter(x=>x!==s.id):[...inst.sel,s.id]"><span class="dot" :class="isOff(s)?'err':'ok'"></span><span style="flex:1" x-text="s.name"></span><span class="small mut" x-text="s.url.replace(/^https?:\/\//,'')"></span></label>
-        </template>
+      <div>
+        <h2>Operazioni in blocco</h2>
+        <div class="small mut" x-text="inst.mode==='install' ? 'Carica un pacchetto su più siti insieme' : 'Togli un\'estensione da più siti insieme'"></div>
       </div>
-      <div class="small mut" style="margin-top:6px" x-text="inst.sel.length+' siti selezionati'+(inst.mode==='remove'&&!inst.sel.length?' (vuoto = tutti quelli che hanno l\'estensione)':'')"></div>
+      <div class="sp"></div>
+      <div class="seg bk-mode">
+        <button :class="inst.mode==='install'?'on':''" @click="instSetMode('install')">Installa</button>
+        <button :class="inst.mode==='remove'?'on':''" @click="instSetMode('remove')">Rimuovi</button>
+      </div>
+      <button class="btn icon ghost" @click="drawer=null" title="Chiudi">✕</button>
+    </div>
 
-      <template x-if="inst.out.length">
-        <div style="margin-top:14px"><h3 class="small mut">Esito</h3>
-          <template x-for="(o,i) in inst.out" :key="i"><div class="row small" style="padding:4px 0"><span class="dot" :class="o.ok?'ok':'err'"></span><span x-text="(o.site||o.site_name||o.name||'')+' — '+(o.message||o.error||(o.ok?'ok':'errore'))"></span></div></template>
+    <div class="body">
+      <!-- 1 · PIATTAFORMA -->
+      <section class="bk-step">
+        <div class="bk-h"><span class="bk-n">1</span><span>Piattaforma</span></div>
+        <div class="bk-plat">
+          <button type="button" :class="inst.cms==='wp'?'on':''" @click="instSetCms('wp')">
+            <span class="cms wp">WP</span><span class="bk-plat-name">WordPress</span><span class="bk-cnt"><span x-text="instCmsCount('wp')"></span> <span x-text="pl(instCmsCount('wp'),'sito','siti')"></span></span>
+          </button>
+          <button type="button" :class="inst.cms==='joomla'?'on':''" @click="instSetCms('joomla')">
+            <span class="cms joomla">J</span><span class="bk-plat-name">Joomla</span><span class="bk-cnt"><span x-text="instCmsCount('joomla')"></span> <span x-text="pl(instCmsCount('joomla'),'sito','siti')"></span></span>
+          </button>
         </div>
+      </section>
+
+      <!-- 2 · COSA INSTALLARE -->
+      <template x-if="inst.mode==='install'">
+        <section class="bk-step">
+          <div class="bk-h"><span class="bk-n">2</span><span>Cosa installare</span></div>
+          <label class="bk-drop" :class="{ over: inst.drag, has: inst.file }"
+                 @dragover.prevent="inst.drag=true" @dragleave.prevent="inst.drag=false" @drop.prevent="instDrop($event)">
+            <input type="file" accept=".zip" style="display:none" @change="inst.file=$event.target.files[0]">
+            <template x-if="!inst.file">
+              <div class="bk-drop-empty">
+                <div class="bk-drop-ico">⇪</div>
+                <b>Trascina qui lo zip</b>
+                <span class="small mut">oppure clicca per sceglierlo</span>
+              </div>
+            </template>
+            <template x-if="inst.file">
+              <div class="bk-drop-file">
+                <div class="bk-drop-ico">▣</div>
+                <div class="bk-drop-meta"><b x-text="inst.file.name"></b><span class="small mut" x-text="Math.max(1, Math.round(inst.file.size/1024))+' KB'"></span></div>
+                <button type="button" class="btn sm" @click.prevent.stop="inst.file=null">Cambia</button>
+              </div>
+            </template>
+          </label>
+          <div class="bk-opts" x-show="inst.cms==='wp'">
+            <div class="seg">
+              <button type="button" :class="inst.kind==='plugin'?'on':''" @click="inst.kind='plugin'">Plugin</button>
+              <button type="button" :class="inst.kind==='theme'?'on':''" @click="inst.kind='theme'">Tema</button>
+            </div>
+            <label class="check"><input type="checkbox" x-model="inst.activate"> Attiva dopo l'installazione</label>
+          </div>
+        </section>
+      </template>
+
+      <!-- 2 · COSA RIMUOVERE -->
+      <template x-if="inst.mode==='remove'">
+        <section class="bk-step">
+          <div class="bk-h"><span class="bk-n">2</span><span>Cosa rimuovere</span>
+            <span class="sp"></span><span class="badge acc" x-show="inst.rmItems.length" x-text="inst.rmItems.length+' '+pl(inst.rmItems.length,'scelta','scelte')"></span></div>
+          <div class="search"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input class="input" x-model="inst.q" @input.debounce.350ms="instSearch(true)" @keydown.enter.prevent="instSearch()" placeholder="Cerca per nome o slug">
+          </div>
+          <div class="empty" x-show="inst.searched&&!inst.results.length" style="padding:18px">Nessun risultato</div>
+          <div class="bk-results" x-show="inst.results.length">
+            <template x-for="r in inst.results" :key="r.type+'|'+r.slug">
+              <div class="bk-ext" :class="{ sel: instSelected(r), prot: r.protected }">
+                <label class="bk-ext-main">
+                  <input type="checkbox" :disabled="r.protected" :checked="instSelected(r)" @change="instToggle(r)">
+                  <div class="bk-ext-info">
+                    <div class="bk-ext-title"><b x-text="r.name"></b><span class="badge" x-text="r.type"></span><span class="badge" x-show="r.protected">protetto</span></div>
+                    <div class="mono small mut" x-text="r.slug"></div>
+                    <div class="small" x-show="(r.versions||[]).length"><span class="mut">versione:</span> <span x-text="(r.versions||[]).map(v=>'v'+v).join(' · ')"></span> <span class="badge warn" x-show="(r.versions||[]).length>1">miste</span></div>
+                  </div>
+                  <button type="button" class="btn sm" @click.prevent.stop="instToggleOpen(r)"><span x-text="'su '+r.count+' '+pl(r.count,'sito','siti')"></span> <span x-text="instIsOpen(r)?'▴':'▾'"></span></button>
+                </label>
+                <div class="bk-ext-sites" x-show="instIsOpen(r)">
+                  <template x-for="d in (r.site_details||[])" :key="d.id">
+                    <div class="row small"><span style="flex:1" x-text="d.name"></span><span class="mono" x-text="d.version?'v'+d.version:'—'"></span><span class="badge warn" x-show="d.update_available" x-text="'→ '+(d.new_version||'update')"></span></div>
+                  </template>
+                </div>
+              </div>
+            </template>
+          </div>
+        </section>
+      </template>
+
+      <!-- 3 · SU QUALI SITI -->
+      <section class="bk-step">
+        <div class="bk-h"><span class="bk-n">3</span><span>Su quali siti</span>
+          <span class="sp"></span>
+          <span class="badge" :class="inst.sel.length?'acc':''" x-show="inst.mode==='install'||inst.rmItems.length" x-text="inst.sel.length+' / '+instSites().length+' selezionati'"></span>
+        </div>
+        <template x-if="inst.mode==='remove'&&!inst.rmItems.length">
+          <div class="empty bk-hint">Scegli prima un'estensione: qui compariranno solo i siti che la hanno.</div>
+        </template>
+        <template x-if="inst.mode==='install'||inst.rmItems.length">
+          <div>
+            <div class="bk-tools">
+              <div class="search"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input class="input" x-model="inst.siteFilter" placeholder="Filtra siti…"></div>
+              <button type="button" class="btn sm bk-all" @click="instSelAll()">✓ Seleziona tutti</button>
+              <button type="button" class="btn sm" @click="instSelNone()" :disabled="!inst.sel.length">Nessuno</button>
+            </div>
+            <div class="chips bk-folders" x-show="instFolders().length>1">
+              <span class="small mut">Cartelle:</span>
+              <template x-for="f in instFolders()" :key="f.tag">
+                <span class="fchip" :class="instFolderOn(f.tag)?'on':''" @click="instToggleFolder(f.tag)"><span x-text="f.tag"></span><span class="n" x-text="f.count"></span></span>
+              </template>
+            </div>
+            <div class="bk-sites">
+              <template x-for="s in instVisibleSites()" :key="s.id">
+                <label class="bk-site" :class="inst.sel.includes(s.id)?'sel':''">
+                  <input type="checkbox" :checked="inst.sel.includes(s.id)" @change="instToggleSite(s.id)">
+                  <span class="site-thumb bk-thumb">
+                    <img x-show="s.shot_path" :src="thumbUrl(s)" loading="lazy" alt="" @error="$event.target.style.visibility='hidden'">
+                    <span class="ini" x-show="!s.shot_path" x-text="initials(s.name)"></span>
+                  </span>
+                  <span class="bk-site-txt"><span class="name" x-text="s.name"></span><span class="url" x-text="s.url.replace(/^https?:\/\//,'')"></span></span>
+                  <span class="mono small mut" x-show="inst.mode==='remove'" x-text="instSiteVersion(s)"></span>
+                  <span class="dot" :class="isOff(s)?'err':'ok'" :title="isOff(s)?'offline':'online'"></span>
+                </label>
+              </template>
+              <div class="empty" x-show="!instVisibleSites().length" style="padding:18px">Nessun sito corrisponde al filtro</div>
+            </div>
+          </div>
+        </template>
+      </section>
+
+      <!-- ESITO -->
+      <template x-if="inst.out.length">
+        <section class="bk-step">
+          <div class="bk-h"><span class="bk-n ok">✓</span><span>Esito</span>
+            <span class="sp"></span>
+            <span class="badge ok" x-show="instOutCount('ok')" x-text="instOutCount('ok')+' '+pl(instOutCount('ok'),'riuscito','riusciti')"></span>
+            <span class="badge err" x-show="instOutCount('err')" x-text="instOutCount('err')+' '+pl(instOutCount('err'),'fallito','falliti')"></span>
+            <span class="badge" x-show="instOutCount('skip')" x-text="instOutCount('skip')+' '+pl(instOutCount('skip'),'saltato','saltati')"></span>
+          </div>
+          <div class="bk-out">
+            <template x-for="(o,i) in inst.out" :key="i">
+              <div class="bk-out-row" :class="o.skipped?'skip':(o.ok?'ok':'err')">
+                <span class="dot" :class="o.skipped?'mut':(o.ok?'ok':'err')"></span>
+                <b x-text="o.site||o.site_name||o.name||''"></b>
+                <span x-text="o.message||o.error||(o.ok?'ok':'errore')"></span>
+              </div>
+            </template>
+          </div>
+        </section>
       </template>
     </div>
-    <div class="foot"><button class="btn" @click="drawer=null">Chiudi</button><button class="btn primary" :disabled="inst.busy" @click="inst.mode==='install'?runInstall():runRemove()"><span class="spinner" x-show="inst.busy"></span> <span x-text="inst.mode==='install'?'Installa':'Rimuovi'"></span></button></div>
+
+    <div class="foot bk-foot">
+      <div class="bk-summary" :class="instCanRun?'ready':''" x-text="instSummary"></div>
+      <button class="btn" @click="drawer=null">Chiudi</button>
+      <button class="btn" :class="inst.mode==='remove'?'danger-solid':'primary'" :disabled="!instCanRun"
+              @click="inst.mode==='install'?runInstall():runRemove()">
+        <span class="spinner" x-show="inst.busy"></span>
+        <span x-text="inst.mode==='install'?'Installa':'Rimuovi'"></span>
+      </button>
+    </div>
   </div></div>
 </template>
 
@@ -1106,7 +1366,7 @@
   <div style="position:fixed;inset:24px;z-index:43;background:#fff;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow)" @keydown.escape.window="previewFull=''">
     <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg-2);border-bottom:1px solid var(--bd)">
       <b style="flex:1;font-size:13px">Anteprima report</b>
-      <button class="btn sm" @click="openTokenLink(() => reportPdfUrl())">⬇ PDF</button>
+      <button class="btn sm" @click="openTokenLink(() => reportPdfUrl())"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg> PDF</button>
       <button class="btn sm ghost" @click="previewFull=''">✕ Chiudi</button>
     </div>
     <iframe :srcdoc="previewFull" sandbox="allow-same-origin" style="flex:1;width:100%;border:0;background:#fff"></iframe>

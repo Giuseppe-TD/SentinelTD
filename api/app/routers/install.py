@@ -232,9 +232,30 @@ async def mass_uninstall(
     if not targets:
         raise HTTPException(422, f"Nessun sito {cms} tra quelli selezionati")
 
+    # Quali (sito, estensione) esistono DAVVERO secondo l'ultimo check: la rimozione va
+    # chiesta solo a chi ce l'ha. Prima si mandava a tutti i siti selezionati, e quelli
+    # senza l'estensione rispondevano "non trovata" -> errori certi nel mass uninstall.
+    have = set()
+    ext_rows = (await s.execute(
+        select(Extension.site_id, Extension.type, Extension.slug)
+        .where(Extension.site_id.in_([t.id for t in targets]))
+    )).all()
+    for sid, et, esl in ext_rows:
+        have.add((sid, (et or "").lower(), (esl or "").lower()))
+
     results = []
     for site in targets:
         for it in clean:
+            key = (site.id, it["type"].lower(), it["slug"].lower())
+            if key not in have:
+                # non installata su questo sito: niente chiamata, niente errore
+                results.append({
+                    "site_id": site.id, "site_name": site.name, "url": site.url,
+                    "req_type": it["type"], "req_slug": it["slug"],
+                    "ok": True, "skipped": True, "error": "",
+                    "message": "non presente su questo sito: saltato",
+                })
+                continue
             res = await _uninstall_one(site, it["type"], it["slug"])
             results.append({
                 "site_id": site.id, "site_name": site.name, "url": site.url,
@@ -242,10 +263,12 @@ async def mass_uninstall(
                 **res,
             })
 
-    ok_n = sum(1 for r in results if r["ok"])
+    done = [r for r in results if not r.get("skipped")]
+    ok_n = sum(1 for r in done if r["ok"])
     return {
         "cms": cms, "items": clean,
-        "total": len(results), "ok": ok_n, "failed": len(results) - ok_n,
+        "total": len(done), "ok": ok_n, "failed": len(done) - ok_n,
+        "skipped": len(results) - len(done),
         "results": results,
     }
 
