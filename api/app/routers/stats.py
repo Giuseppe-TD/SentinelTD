@@ -5,7 +5,7 @@ Statistiche per la dashboard: classifiche, andamento e confronto fra mesi.
 Legge il rollup mensile (update_monthly), quindi copre tutto lo storico disponibile
 e non solo i 7 giorni della timeline.
 """
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse, Response
@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import get_session
-from ..models import UpdateMonthly, Site
+from ..models import UpdateMonthly, UpdateHistory, Site
 from ..auth import require_auth, verify_token
 from .. import report as rep
 
@@ -144,6 +144,110 @@ async def compare(a: str = Query(...), b: str = Query(...), scope: str = Query("
         "sites": rows[:40],
         "components": crows[:25],
         "max": max([r["a"] for r in rows] + [r["b"] for r in rows] + [1]),
+    }
+
+
+_GIORNI = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]
+_MESI_BREVI = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"]
+
+
+@router.get("/daily")
+async def daily(days: int = Query(30, ge=7, le=180), scope: str = Query(""),
+                s: AsyncSession = Depends(get_session)):
+    """Andamento GIORNALIERO e classifiche del periodo.
+
+    Legge la cronologia dettagliata (update_history), quindi copre i giorni conservati
+    secondo l'impostazione "Conserva la cronologia dettagliata". La risposta ha la stessa
+    forma di /overview + /trend, cosi' la pagina usa lo stesso grafico e le stesse liste.
+    """
+    allowed, by_id = await _perimeter(s, scope)
+    now = datetime.now().astimezone()
+    start = (now - timedelta(days=days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    prev_start = start - timedelta(days=days)
+
+    rows = (await s.execute(
+        select(UpdateHistory).where(UpdateHistory.created_at >= prev_start).order_by(UpdateHistory.created_at)
+    )).scalars().all()
+    if allowed is not None:
+        rows = [r for r in rows if r.site_id in allowed]
+
+    buckets: dict[str, dict] = {}
+    for i in range(days):
+        d = (start + timedelta(days=i)).date()
+        buckets[d.isoformat()] = {"period": d.isoformat(),
+                                  "label": f"{_GIORNI[d.weekday()]} {d.day} {_MESI_BREVI[d.month - 1]}",
+                                  "short": f"{_GIORNI[d.weekday()][:3]} {d.day}",
+                                  "weekday": d.weekday(),
+                                  "updates": 0, "failed": 0, "_sites": set(), "_comp": set()}
+
+    sites_cur, comps_cur, prev_ok = {}, {}, 0
+    for r in rows:
+        when = r.created_at.astimezone()
+        key = when.date().isoformat()
+        if when < start:
+            if r.ok:
+                prev_ok += 1
+            continue
+        b = buckets.get(key)
+        if b is None:
+            continue
+        if r.ok:
+            b["updates"] += 1
+            b["_sites"].add(r.site_id)
+            b["_comp"].add((r.ext_name or r.slug).lower())
+            site = by_id.get(r.site_id)
+            e = sites_cur.setdefault(r.site_id, {"site_id": r.site_id,
+                                                 "name": r.site_name or (site.name if site else f"#{r.site_id}"),
+                                                 "cms": r.cms or (site.cms if site else ""),
+                                                 "updates": 0, "components": 0, "failed": 0, "prev": 0, "delta": 0})
+            e["updates"] += 1
+            c = comps_cur.setdefault((r.ext_name or r.slug).lower(),
+                                     {"name": r.ext_name or r.slug, "type": r.ext_type, "count": 0, "_sites": set()})
+            c["count"] += 1
+            c["_sites"].add(r.site_id)
+        else:
+            b["failed"] += 1
+            site = by_id.get(r.site_id)
+            e = sites_cur.setdefault(r.site_id, {"site_id": r.site_id,
+                                                 "name": r.site_name or (site.name if site else f"#{r.site_id}"),
+                                                 "cms": r.cms or (site.cms if site else ""),
+                                                 "updates": 0, "components": 0, "failed": 0, "prev": 0, "delta": 0})
+            e["failed"] += 1
+
+    series, prev_val = [], None
+    for b in buckets.values():
+        b["sites"] = len(b.pop("_sites"))
+        b["components"] = len(b.pop("_comp"))
+        b["delta"] = None if prev_val is None else b["updates"] - prev_val
+        b["delta_pct"] = None if not prev_val else round((b["updates"] - prev_val) * 100 / prev_val)
+        prev_val = b["updates"]
+        series.append(b)
+
+    for sid, e in sites_cur.items():
+        e["components"] = len({k for k, c in comps_cur.items() if sid in c["_sites"]})
+    top_sites = sorted(sites_cur.values(), key=lambda e: (-e["updates"], e["name"].lower()))[:25]
+    comps = [{"name": c["name"], "type": c["type"], "count": c["count"], "sites": len(c["_sites"])}
+             for c in comps_cur.values()]
+    top_components = sorted(comps, key=lambda c: (-c["count"], c["name"].lower()))[:20]
+
+    tot = sum(x["updates"] for x in series)
+    label = f"ultimi {days} giorni"
+    return {
+        "days": days,
+        "trend": {"months": series, "max": max([x["updates"] for x in series] + [1]),
+                  "total": tot, "avg": round(tot / max(1, days), 1),
+                  "scope_label": rep.scope_label(scope)},
+        "data": {
+            "period": "", "period_label": label, "prev_label": f"{days} giorni prima",
+            "scope": scope or rep.GLOBAL_KEY, "scope_label": rep.scope_label(scope),
+            "totals": {"updates": tot, "failed": sum(x["failed"] for x in series),
+                       "sites": len({x["site_id"] for x in top_sites if x["updates"]}),
+                       "components": len(comps)},
+            "prev_totals": {"updates": prev_ok, "failed": 0, "sites": 0, "components": 0},
+            "top_sites": top_sites, "top_components": top_components,
+            "max_site": max([x["updates"] for x in top_sites] + [1]),
+            "max_component": max([c["count"] for c in top_components] + [1]),
+        },
     }
 
 

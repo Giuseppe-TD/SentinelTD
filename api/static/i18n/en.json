@@ -1530,5 +1530,17 @@
   "Usa quello incluso": "Use the bundled one",
   "Torna al pacchetto incluso in Sentinel TD": "Go back to the package bundled with Sentinel TD",
   "Ora viene usato il pacchetto incluso": "The bundled package is now in use",
-  "Non riuscito": "Failed"
+  "Non riuscito": "Failed",
+  "Giorni": "Days",
+  "7 giorni": "7 days",
+  "30 giorni": "30 days",
+  "90 giorni": "90 days",
+  "Aggiornamenti applicati giorno per giorno": "Updates applied day by day",
+  "Media giornaliera": "Daily average",
+  "Giorno migliore": "Best day",
+  "Rispetto al periodo prima": "Vs previous period",
+  "rispetto al giorno prima": "vs previous day",
+  "Dettaglio del periodo selezionato": "Detail of the selected period",
+  "Per giorno della settimana": "By day of the week",
+  "Totale degli aggiornamenti applicati nel periodo, per giorno": "Total updates applied in the period, per day"
 }

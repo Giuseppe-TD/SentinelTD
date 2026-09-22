@@ -140,17 +140,24 @@
     select.addEventListener('change',()=>setLanguage(select.value));
     bar.append(label,select);
     // Sentinel has a real application topbar: keep the language control inside it
-    // instead of reserving a detached white strip above the interface.
+    // instead of floating it over the interface buttons.
+    // NB: the topbar does not exist yet at DOMContentLoaded (the whole app lives inside
+    // an Alpine template rendered later), so placement is re-evaluated on every DOM
+    // change: on login the control moves into the topbar, on logout it floats again.
     const project=document.documentElement.dataset.project || '';
-    const inlineHost=project==='panopticon-lite' ? document.querySelector('.topbar') : null;
-    if(inlineHost){ bar.classList.add('language-switcher--inline'); inlineHost.append(bar); }
-    else document.body.append(bar);
+    function place() {
+      const host=project==='panopticon-lite' ? document.querySelector('.topbar') : null;
+      if(host){ if(bar.parentElement!==host){ bar.classList.add('language-switcher--inline'); host.append(bar); } }
+      else if(bar.parentElement!==document.body){ bar.classList.remove('language-switcher--inline'); document.body.append(bar); }
+    }
+    place();
     observer=new MutationObserver(records=>{
       observer.disconnect();
       for(const record of records) {
         if(record.type==='childList') for(const node of record.addedNodes) render(node);
         else renderNode(record.target);
       }
+      place();
       observe();
     });
     setLanguage(preference);

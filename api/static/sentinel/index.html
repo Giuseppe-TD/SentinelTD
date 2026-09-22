@@ -160,15 +160,34 @@
             <div class="grid two">
               <div class="card">
                 <h3>Aggiornamenti ultimi 7 giorni</h3>
-                <div class="bars" x-show="histSummary">
-                  <template x-for="d in (histSummary?histSummary.days:[])" :key="d.day">
-                    <div class="b" :title="d.day+': '+d.ok+' ok, '+d.failed+' falliti'">
-                      <div class="bv" x-show="d.ok+d.failed" x-text="d.ok+d.failed"></div>
-                      <div class="seg failed" :style="'height:'+barH(d,'failed')"></div>
-                      <div class="seg ok" :style="'height:'+barH(d,'ok')"></div>
-                      <div class="lb" x-text="dayLbl(d.day)"></div>
+                <div class="tr-chart dash" x-show="histSummary" @mouseleave="dashHover=null">
+                  <div class="tr-y">
+                    <template x-for="t in dashScale.ticks" :key="'dy'+t"><span :style="'bottom:'+dashY(t)+'px'" x-text="fmtNum(t)"></span></template>
+                    <span style="bottom:0">0</span>
+                  </div>
+                  <div class="tr-plot">
+                    <template x-for="t in dashScale.ticks" :key="'dg'+t"><div class="tr-grid" :style="'bottom:'+dashY(t)+'px'"></div></template>
+                    <div class="tr-grid base" style="bottom:0"></div>
+                    <div class="tr-cols">
+                      <template x-for="(d, i) in (histSummary?histSummary.days:[])" :key="'dc'+d.day">
+                        <div class="tr-col" :class="{ hov: dashHover===d.day }" @mouseenter="dashHover=d.day">
+                          <div class="tr-val" x-show="d.ok+d.failed" :style="'bottom:'+(dashY(d.ok+d.failed)+6)+'px'" x-text="fmtNum(d.ok)"></div>
+                          <div class="tr-stack" :style="'height:'+dashY(d.ok+d.failed)+'px'">
+                            <div class="tr-fail" x-show="d.failed" :style="'height:'+dashY(d.failed)+'px'"></div>
+                            <div class="tr-ok" :style="'height:'+dashY(d.ok)+'px'"></div>
+                          </div>
+                          <div class="tr-tip" x-show="dashHover===d.day" :class="i >= (histSummary.days.length/2) ? 'r' : ''">
+                            <b x-text="dashDay(d)"></b>
+                            <div><span class="dotc ok"></span><span x-text="fmtNum(d.ok)"></span> <span>aggiornamenti</span></div>
+                            <div x-show="d.failed"><span class="dotc err"></span><span x-text="fmtNum(d.failed)"></span> <span>non riusciti</span></div>
+                          </div>
+                        </div>
+                      </template>
                     </div>
-                  </template>
+                  </div>
+                  <div class="tr-x">
+                    <template x-for="d in (histSummary?histSummary.days:[])" :key="'dx'+d.day"><span x-text="dashDay(d)"></span></template>
+                  </div>
                 </div>
                 <h3 style="margin-top:22px">Attività recente</h3>
                 <div class="timeline">
@@ -224,7 +243,8 @@
 <div class="card" style="margin-top:16px" x-show="stats.data">
               <div class="row" style="flex-wrap:wrap;gap:10px">
                 <div class="seg">
-                  <button :class="stats.mode==='month'?'on':''" @click="stats.mode='month'">Un mese</button>
+                  <button :class="stats.mode==='days'?'on':''" @click="stats.mode='days';loadStats(false)">Giorni</button>
+                  <button :class="stats.mode==='month'?'on':''" @click="stats.mode='month';loadStats(false)">Un mese</button>
                   <button :class="stats.mode==='compare'?'on':''" @click="stats.mode='compare';loadCompare()">Confronta due mesi</button>
                 </div>
                 <span class="spinner" x-show="stats.busy"></span>
@@ -240,20 +260,26 @@
               <div class="tr-head">
                 <div class="tr-title">
                   <b>Andamento</b>
-                  <div class="small mut">Aggiornamenti applicati per mese — <b>clicca una barra</b> per vedere il dettaglio di quel mese</div>
+                  <div class="small mut" x-show="stats.mode!=='days'">Aggiornamenti applicati per mese — <b>clicca una barra</b> per vedere il dettaglio di quel mese</div>
+                  <div class="small mut" x-show="stats.mode==='days'">Aggiornamenti applicati giorno per giorno</div>
                 </div>
-                <div class="seg">
+                <div class="seg" x-show="stats.mode!=='days'">
                   <button type="button" :class="stats.months===6?'on':''" @click="stats.months=6;loadStats(false)">6 mesi</button>
                   <button type="button" :class="stats.months===12?'on':''" @click="stats.months=12;loadStats(false)">12 mesi</button>
                   <button type="button" :class="stats.months===24?'on':''" @click="stats.months=24;loadStats(false)">24 mesi</button>
+                </div>
+                <div class="seg" x-show="stats.mode==='days'">
+                  <button type="button" :class="stats.days===7?'on':''" @click="stats.days=7;loadStats(false)">7 giorni</button>
+                  <button type="button" :class="stats.days===30?'on':''" @click="stats.days=30;loadStats(false)">30 giorni</button>
+                  <button type="button" :class="stats.days===90?'on':''" @click="stats.days=90;loadStats(false)">90 giorni</button>
                 </div>
               </div>
 
               <div class="tr-kpis" x-show="!statEmptyWindow && stats.trend">
                 <div><span class="k">Totale nel periodo</span><b x-text="fmtNum(stats.trend && stats.trend.total)"></b></div>
-                <div><span class="k">Media mensile</span><b x-text="fmtNum(stats.trend && stats.trend.avg, 1)"></b></div>
-                <div><span class="k">Mese migliore</span><b><span x-text="trendBest.value"></span> <small x-text="trendBest.label"></small></b></div>
-                <div><span class="k">Rispetto al mese prima</span><b :class="deltaCls(trendLast)" x-text="deltaTxt(trendLast)"></b></div>
+                <div><span class="k" x-text="stats.mode==='days' ? 'Media giornaliera' : 'Media mensile'"></span><b x-text="fmtNum(stats.trend && stats.trend.avg, 1)"></b></div>
+                <div><span class="k" x-text="stats.mode==='days' ? 'Giorno migliore' : 'Mese migliore'"></span><b><span x-text="trendBest.value"></span> <small x-text="trendBest.label"></small></b></div>
+                <div><span class="k" x-text="stats.mode==='days' ? 'Rispetto al periodo prima' : 'Rispetto al mese prima'"></span><b :class="deltaCls(trendPeriodDelta)" x-text="deltaTxt(trendPeriodDelta)"></b></div>
               </div>
 
               <div class="tr-chart" x-show="!statEmptyWindow" @mouseleave="stats.hover=null">
@@ -282,7 +308,7 @@
                           <div><span class="dotc ok"></span><span x-text="fmtNum(m.updates)"></span> <span>aggiornamenti</span></div>
                           <div x-show="m.failed"><span class="dotc err"></span><span x-text="fmtNum(m.failed)"></span> <span>non riusciti</span></div>
                           <div class="mut"><span x-text="m.sites"></span> <span>siti</span> · <span x-text="m.components"></span> <span>componenti</span></div>
-                          <div x-show="m.delta!==null && m.delta!==undefined"><span :class="deltaCls(m)" x-text="deltaTxt(m)"></span> <span class="mut">rispetto al mese prima</span></div>
+                          <div x-show="m.delta!==null && m.delta!==undefined"><span :class="deltaCls(m)" x-text="deltaTxt(m)"></span> <span class="mut" x-text="stats.mode==='days' ? 'rispetto al giorno prima' : 'rispetto al mese prima'"></span></div>
                         </div>
                       </div>
                     </template>
@@ -290,24 +316,47 @@
                 </div>
                 <div class="tr-x">
                   <template x-for="(m, i) in (stats.trend ? stats.trend.months : [])" :key="'x'+m.period">
-                    <span :class="m.period===stats.period ? 'sel' : ''" x-text="(stats.months<24 || i%2===0 || m.period===stats.period) ? shortMonth(m.label) : ''"></span>
+                    <span :class="m.period===stats.period ? 'sel' : ''" x-text="axisLabel(m, i, stats.trend.months.length)"></span>
                   </template>
                 </div>
               </div>
               <div class="tr-legend" x-show="!statEmptyWindow">
                 <span><i class="sw ok"></i>Riusciti</span>
                 <span><i class="sw err"></i>Non riusciti</span>
-                <span><i class="sw avg"></i>Media mensile</span>
+                <span><i class="sw avg"></i><span x-text="stats.mode==='days' ? 'Media giornaliera' : 'Media mensile'"></span></span>
               </div>
               <div class="empty" x-show="statEmptyWindow" style="padding:28px">Nessun aggiornamento registrato negli ultimi <span x-text="stats.months"></span> mesi in questo perimetro.</div>
 
-              <!-- MODALITÀ MESE -->
-              <template x-if="stats.mode==='month' && stats.data">
+              <!-- PER GIORNO DELLA SETTIMANA -->
+              <template x-if="stats.mode==='days' && statWeekdays.length">
+                <div class="wd-wrap">
+                  <b style="font-size:13px">Per giorno della settimana</b>
+                  <div class="small mut" style="margin-bottom:10px">Totale degli aggiornamenti applicati nel periodo, per giorno</div>
+                  <div class="wd">
+                    <template x-for="w in statWeekdays" :key="'wd'+w.idx">
+                      <div class="wd-item" :title="w.name+': '+fmtNum(w.updates)+' aggiornamenti in '+w.days+' giorni'">
+                        <div class="wd-bar"><div class="wd-fill" :style="'width:'+w.pct+'%'"></div></div>
+                        <span class="wd-name" x-text="w.name"></span>
+                        <span class="wd-val" x-text="fmtNum(w.updates)"></span>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </template>
+
+              <!-- MODALITÀ MESE / GIORNI: dettaglio e classifiche -->
+              <template x-if="(stats.mode==='month' || stats.mode==='days') && stats.data">
                 <div>
                   <div class="row" style="margin:20px 0 4px;flex-wrap:wrap;gap:10px;border-top:1px solid var(--bd);padding-top:16px">
-                    <div style="flex:1;min-width:200px"><b style="font-size:15px" x-text="stats.data.period_label"></b>
-                      <div class="small mut">Dettaglio del mese selezionato · confronto con <span x-text="stats.data.prev_label"></span></div></div>
-                    <div class="row" style="gap:4px">
+                    <template x-if="stats.mode==='days'">
+                      <div style="flex:1;min-width:200px"><b style="font-size:15px" x-text="stats.data.period_label"></b>
+                        <div class="small mut">Dettaglio del periodo selezionato</div></div>
+                    </template>
+                    <template x-if="stats.mode!=='days'">
+                      <div style="flex:1;min-width:200px"><b style="font-size:15px" x-text="stats.data.period_label"></b>
+                        <div class="small mut">Dettaglio del mese selezionato · confronto con <span x-text="stats.data.prev_label"></span></div></div>
+                    </template>
+                    <div class="row" style="gap:4px" x-show="stats.mode!=='days'">
                       <button class="btn icon" :disabled="!canShiftStat(-1)" @click="shiftStatMonth(-1)" title="Mese precedente (freccia ←)">‹</button>
                       <select class="input" style="max-width:190px" x-model="stats.period" @change="pickMonth(stats.period)">
                         <template x-for="m in statMonths" :key="'pp'+m.period"><option :value="m.period" :selected="m.period===stats.period" x-text="m.label+(m.updates?' — '+m.updates+' update':'')"></option></template>

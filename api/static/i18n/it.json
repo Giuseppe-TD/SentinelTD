@@ -1530,5 +1530,17 @@
   "Usa quello incluso": "Usa quello incluso",
   "Torna al pacchetto incluso in Sentinel TD": "Torna al pacchetto incluso in Sentinel TD",
   "Ora viene usato il pacchetto incluso": "Ora viene usato il pacchetto incluso",
-  "Non riuscito": "Non riuscito"
+  "Non riuscito": "Non riuscito",
+  "Giorni": "Giorni",
+  "7 giorni": "7 giorni",
+  "30 giorni": "30 giorni",
+  "90 giorni": "90 giorni",
+  "Aggiornamenti applicati giorno per giorno": "Aggiornamenti applicati giorno per giorno",
+  "Media giornaliera": "Media giornaliera",
+  "Giorno migliore": "Giorno migliore",
+  "Rispetto al periodo prima": "Rispetto al periodo prima",
+  "rispetto al giorno prima": "rispetto al giorno prima",
+  "Dettaglio del periodo selezionato": "Dettaglio del periodo selezionato",
+  "Per giorno della settimana": "Per giorno della settimana",
+  "Totale degli aggiornamenti applicati nel periodo, per giorno": "Totale degli aggiornamenti applicati nel periodo, per giorno"
 }

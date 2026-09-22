@@ -823,7 +823,11 @@ a.statrow:hover .nm { color: var(--acc); }
 .tr-col.sel .tr-val { color: var(--txt); font-size: 12px; }
 
 .tr-x { grid-row: 2; grid-column: 2; display: flex; gap: 8px; }
-.tr-x span { flex: 1; min-width: 0; text-align: center; font-size: 10.5px; color: var(--mut); white-space: nowrap; overflow: hidden; }
+.tr-x span {
+  flex: 1; min-width: 0; text-align: center; font-size: 10.5px; color: var(--mut); white-space: nowrap;
+  overflow: visible;   /* con molti giorni si mostra un'etichetta ogni N: le vicine sono vuote,
+                          quindi puo' sbordare senza accavallarsi (ritagliata si leggeva "dom :") */
+}
 .tr-x span.sel { color: var(--txt); font-weight: 600; }
 
 /* tooltip del mese */
@@ -857,3 +861,18 @@ a.statrow:hover .nm { color: var(--acc); }
 .tr-kpis .err, .tr-tip .err { color: var(--err); }
 /* i valori sopra le barre restano leggibili anche dove passa la linea della media */
 .tr-val { z-index: 4; background: var(--panel); padding: 0 4px; border-radius: 4px; line-height: 1.35; }
+
+/* grafico compatto in dashboard (stessa grammatica di quello delle statistiche) */
+.tr-chart.dash { grid-template-rows: 130px auto; padding-top: 26px; column-gap: 8px; }
+.tr-chart.dash .tr-stack { width: min(70%, 54px); }
+.tr-chart.dash .tr-col .tr-stack { opacity: .85; }
+.tr-chart.dash .tr-col.hov .tr-stack { opacity: 1; }
+
+/* riepilogo per giorno della settimana */
+.wd-wrap { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--bd); }
+.wd { display: flex; flex-direction: column; gap: 6px; }
+.wd-item { display: grid; grid-template-columns: 1fr 38px 52px; gap: 10px; align-items: center; }
+.wd-bar { height: 10px; background: var(--panel-2); border-radius: 999px; overflow: hidden; }
+.wd-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--acc), #7c5cff); }
+.wd-name { font-size: 12px; color: var(--txt-2); text-transform: capitalize; }
+.wd-val { font-size: 13px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }

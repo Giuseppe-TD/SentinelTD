@@ -1530,5 +1530,17 @@
   "Usa quello incluso": "Mitgeliefertes verwenden",
   "Torna al pacchetto incluso in Sentinel TD": "Zurück zum mitgelieferten Paket von Sentinel TD",
   "Ora viene usato il pacchetto incluso": "Jetzt wird das mitgelieferte Paket verwendet",
-  "Non riuscito": "Fehlgeschlagen"
+  "Non riuscito": "Fehlgeschlagen",
+  "Giorni": "Tage",
+  "7 giorni": "7 Tage",
+  "30 giorni": "30 Tage",
+  "90 giorni": "90 Tage",
+  "Aggiornamenti applicati giorno per giorno": "Täglich angewendete Updates",
+  "Media giornaliera": "Tagesdurchschnitt",
+  "Giorno migliore": "Bester Tag",
+  "Rispetto al periodo prima": "Gegenüber Vorzeitraum",
+  "rispetto al giorno prima": "gegenüber Vortag",
+  "Dettaglio del periodo selezionato": "Details des gewählten Zeitraums",
+  "Per giorno della settimana": "Nach Wochentag",
+  "Totale degli aggiornamenti applicati nel periodo, per giorno": "Im Zeitraum angewendete Updates gesamt, pro Tag"
 }

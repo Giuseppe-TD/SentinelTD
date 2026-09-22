@@ -1530,5 +1530,17 @@
   "Usa quello incluso": "Utiliser celui fourni",
   "Torna al pacchetto incluso in Sentinel TD": "Revenir au paquet fourni avec Sentinel TD",
   "Ora viene usato il pacchetto incluso": "Le paquet fourni est maintenant utilisé",
-  "Non riuscito": "Échec"
+  "Non riuscito": "Échec",
+  "Giorni": "Jours",
+  "7 giorni": "7 jours",
+  "30 giorni": "30 jours",
+  "90 giorni": "90 jours",
+  "Aggiornamenti applicati giorno per giorno": "Mises à jour appliquées jour par jour",
+  "Media giornaliera": "Moyenne journalière",
+  "Giorno migliore": "Meilleur jour",
+  "Rispetto al periodo prima": "Par rapport à la période précédente",
+  "rispetto al giorno prima": "par rapport à la veille",
+  "Dettaglio del periodo selezionato": "Détail de la période sélectionnée",
+  "Per giorno della settimana": "Par jour de la semaine",
+  "Totale degli aggiornamenti applicati nel periodo, per giorno": "Total des mises à jour appliquées sur la période, par jour"
 }

@@ -11,6 +11,7 @@ function sentinel() {
     token: localStorage.getItem('tdp_token') || '',
     imageToken: localStorage.getItem('tdp_image_token') || '',
     imgNonce: 0,
+    dashHover: null,
     meta: { version: '', name: 'Sentinel TD', vendor: 'Tastiere Digitali', vendor_url: 'https://www.tastieredigitali.it', author: 'Giuseppe Sciarra' },
     pendingToken: '', step: 'pwd', user: '', pwd: '', code: '', methods: [], err: '', needs2faSetup: false,
 
@@ -35,7 +36,7 @@ function sentinel() {
     tagsForm: { add: '', remove: '' },
     account: { username: '', oldPw: '', newPw: '', msg: '', err: '' },
     notif: { events: [], cur: null, edit: null, preview: null, msg: '', err: '', busy: false, tab: 'email', previewTab: 'email', source: false },
-    stats: { period: '', scope: '__all__', months: 12, data: null, trend: null, periods: [], scopes: [], mode: 'month', cmpA: '', cmpB: '', cmp: null, busy: false, hover: null },
+    stats: { period: '', scope: '__all__', months: 12, data: null, trend: null, periods: [], scopes: [], mode: 'month', cmpA: '', cmpB: '', cmp: null, busy: false, hover: null, days: 30 },
     drep: { from: '', to: '', range: 'q3', mode: 'all', folder: '', ids: [], filter: '', history: true, failed: true, format: 'pdf', busy: false, oldest: '' },
     rep: { cfg: null, template: '', defaultTemplate: '', periods: [], period: '', scopes: [], scope: '__all__', trend: null, trendMonths: 12, html: '', busy: false, msg: '', err: '', advanced: false, dirty: false },
     sec2fa: { totp: false, passkeys: [], setup: null, code: '', msg: '', err: '' },
@@ -908,6 +909,12 @@ function sentinel() {
           if (!this.stats.cmpA && this.stats.periods.length > 1) this.stats.cmpA = this.stats.periods[1].period;
         }
         const qs = `scope=${encodeURIComponent(this.stats.scope)}`;
+        if (this.stats.mode === 'days') {
+          // vista giornaliera: stessa forma di dati, stesso grafico e stesse classifiche
+          const r = await this.api(`/api/stats/daily?days=${this.stats.days}&${qs}`);
+          if (r.ok) { const d = await r.json(); this.stats.trend = d.trend; this.stats.data = d.data; }
+          return;
+        }
         // NB: il trend NON passa il periodo selezionato: la finestra e' sempre
         // "ultimi N mesi fino a oggi". Altrimenti ogni clic su una barra spostava
         // la finestra indietro e si finiva a navigare anni passati vuoti.
@@ -947,6 +954,7 @@ function sentinel() {
     },
 
     async pickMonth(p) {
+      if (this.stats.mode === 'days') return;   // in vista giornaliera non c'e' un mese da aprire
       if (!p || p === this.stats.period) return;
       this.stats.period = p; this.stats.mode = 'month';
       this.stats.busy = true;
@@ -1015,8 +1023,23 @@ function sentinel() {
       const ms = (this.stats.trend && this.stats.trend.months) || [];
       let best = null;
       for (const m of ms) if (!best || (m.updates || 0) > (best.updates || 0)) best = m;
-      return best && best.updates ? { value: this.fmtNum(best.updates), label: this.shortMonth(best.label), period: best.period }
+      return best && best.updates ? { value: this.fmtNum(best.updates), label: this.barLabel(best), period: best.period }
                                    : { value: '—', label: '', period: '' };
+    },
+    // Card "rispetto a prima": nei mesi e' l'ultimo mese vs il precedente; nei giorni
+    // e' il periodo intero vs il periodo precedente (altrimenti confronterebbe ieri e oggi).
+    get trendPeriodDelta() {
+      if (this.stats.mode === 'days' && this.stats.data) {
+        const cur = this.stats.data.totals.updates || 0, prev = this.stats.data.prev_totals.updates || 0;
+        return { delta: cur - prev, delta_pct: prev ? Math.round((cur - prev) * 100 / prev) : null };
+      }
+      return this.trendLast;
+    },
+    // Etichette dell'asse: con molti punti se ne mostra una ogni N per non accavallarle
+    axisLabel(m, i, total) {
+      const step = Math.max(1, Math.ceil(total / 12));
+      const show = i % step === 0 || i === total - 1 || m.period === this.stats.period;
+      return show ? this.barLabel(m) : '';
     },
     get trendLast() {
       const ms = (this.stats.trend && this.stats.trend.months) || [];
@@ -1031,6 +1054,20 @@ function sentinel() {
       if (!((m.updates || 0) + (m.failed || 0))) return false;
       // con 24 mesi i numeri si accavallano: solo selezionato, sotto il mouse e migliore
       return this.stats.months <= 12 || m.period === this.stats.period || m.period === this.stats.hover || m.period === this.trendBest.period;
+    },
+    // etichetta dell'asse: i punti giornalieri hanno il proprio testo breve
+    barLabel(m) { return m.short || this.shortMonth(m.label); },
+    // riepilogo per giorno della settimana (solo in vista giornaliera)
+    get statWeekdays() {
+      if (this.stats.mode !== 'days' || !this.stats.trend) return [];
+      const names = ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom'];
+      const acc = names.map((n, i) => ({ name: n, updates: 0, days: 0, idx: i }));
+      for (const d of this.stats.trend.months || []) {
+        const w = acc[d.weekday ?? 0];
+        w.updates += d.updates || 0; w.days += 1;
+      }
+      const max = Math.max(1, ...acc.map(a => a.updates));
+      return acc.map(a => ({ ...a, avg: a.days ? a.updates / a.days : 0, pct: Math.round(a.updates * 100 / max) }));
     },
     shortMonth(label) { const p = (label || '').split(' '); return p.length > 1 ? p[0].slice(0, 3) + ' ' + p[1].slice(2) : label; },
 
@@ -1219,6 +1256,28 @@ function sentinel() {
       for (const h of this.history.filter(x => !x.ok).slice(0, 8)) out.push({ kind: 'warn', site: this.sites.find(s => s.id === h.site_id), text: `Update fallito: ${h.name} (${h.error || 'errore'})`, at: h.at });
       if (this.sec.summary && (this.sec.summary.critical || this.sec.summary.exploited)) out.push({ kind: 'err', text: `${this.sec.summary.critical} vulnerabilità critiche, ${this.sec.summary.exploited} sfruttate attivamente`, link: 'security' });
       return out.slice(0, 12);
+    },
+    // ---- grafico "ultimi 7 giorni" in dashboard: stessa resa delle statistiche ----
+    get dashScale() {
+      const ds = (this.histSummary && this.histSummary.days) || [];
+      const max = Math.max(1, ...ds.map(d => (d.ok || 0) + (d.failed || 0)));
+      const pow = Math.pow(10, Math.floor(Math.log10(max)));
+      let step = pow;
+      for (const c of [0.1, 0.2, 0.5, 1, 2, 5, 10]) {
+        const s = c * pow;
+        if (s >= 1 && Math.ceil(max / s) <= 4) { step = s; break; }
+      }
+      step = Math.max(1, Math.round(step));
+      const top = Math.ceil(max / step) * step;
+      const ticks = [];
+      for (let v = step; v <= top; v += step) ticks.push(v);
+      return { top, ticks };
+    },
+    dashY(v) { return Math.round(Math.max(0, v || 0) / (this.dashScale.top || 1) * 130); },   // 130 = altezza in CSS
+    dashDay(d) {
+      const x = new Date(d.day + 'T12:00:00');
+      const n = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'][x.getDay()];
+      return `${n} ${x.getDate()}`;
     },
     barH(day, key) {
       // altezza in PIXEL: le percentuali non si risolvono dentro un flex-item senza altezza esplicita
