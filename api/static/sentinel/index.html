@@ -1005,8 +1005,30 @@
               <div>
                 <div class="card">
                   <h3>Connettori</h3>
-                  <template x-for="c in conn.list" :key="c.kind"><div class="row" style="padding:10px 0;border-bottom:1px solid var(--bd)"><span class="cms" :class="c.kind==='wp'?'wp':'joomla'" x-text="c.kind==='wp'?'WP':'JOOMLA'"></span><div style="flex:1"><div x-text="c.kind==='wp'?'td-panopticon':'plg_system_tdpanopticon'"></div><div class="small mut" x-show="c.present"><span x-show="c.version" x-text="'v'+c.version+' · '"></span><span x-text="fmtDate(c.mtime*1000)"></span></div><div class="small mut" x-show="!c.present">non caricato</div></div><button class="btn sm" x-show="c.present" @click="downloadConn(c.kind)">Scarica</button><label class="btn sm"><span x-text="c.present?'Sostituisci':'Carica'"></span><input type="file" accept=".zip" style="display:none" :disabled="conn.busy" @change="uploadConn(c.kind,$event)"></label></div></template>
+                  <div class="small mut" style="margin-bottom:10px">I pacchetti installabili sono inclusi in Sentinel TD: scaricali da qui, non serve crearli. Caricane uno solo se vuoi usare una versione diversa da quella inclusa.</div>
+                  <template x-for="c in conn.list" :key="c.kind">
+                    <div class="row" style="padding:10px 0;border-bottom:1px solid var(--bd);flex-wrap:wrap">
+                      <span class="cms" :class="c.kind==='wp'?'wp':'joomla'" x-text="c.kind==='wp'?'WP':'JOOMLA'"></span>
+                      <div style="flex:1;min-width:150px">
+                        <div x-text="c.kind==='wp'?'td-panopticon':'plg_system_tdpanopticon'"></div>
+                        <div class="small mut" x-show="c.present && c.builtin"><span x-text="'v'+c.version"></span> · incluso in Sentinel TD</div>
+                        <div class="small mut" x-show="c.present && !c.builtin"><span x-show="c.version" x-text="'v'+c.version+' · '"></span><span>caricato il</span> <span x-text="fmtDate(c.mtime*1000)"></span></div>
+                        <div class="small mut" x-show="!c.present">non disponibile</div>
+                      </div>
+                      <button class="btn sm primary" x-show="c.present" @click="downloadConn(c.kind)">Scarica</button>
+                      <label class="btn sm"><span x-text="c.builtin ? 'Carica una versione tua' : 'Sostituisci'"></span><input type="file" accept=".zip" style="display:none" :disabled="conn.busy" @change="uploadConn(c.kind,$event)"></label>
+                      <button class="btn sm ghost" x-show="c.present && !c.builtin" @click="resetConn(c.kind)" title="Torna al pacchetto incluso in Sentinel TD">Usa quello incluso</button>
+                    </div>
+                  </template>
                   <div class="msg ok" x-show="conn.msg" x-text="conn.msg"></div><div class="msg err" x-show="conn.err" x-text="conn.err"></div>
+                  <h3 style="margin-top:20px">Indirizzo pubblico di questo pannello</h3>
+                  <div class="small mut" style="margin-bottom:8px">Il pacchetto WordPress scaricato da qui viene generato con questo indirizzo e con la chiave qui sotto: i siti nuovi si collegano da soli, senza incollare niente. Lasciandolo vuoto il pacchetto resta neutro.</div>
+                  <div class="row">
+                    <input class="input" type="url" x-model="conn.hubUrl" placeholder="https://sentinel.tuodominio.it">
+                    <button class="btn sm" @click="useCurrentHubUrl()">Usa questo</button>
+                    <button class="btn sm primary" :disabled="!hubDirty" @click="saveHubUrl()">Salva</button>
+                  </div>
+
                   <h3 style="margin-top:20px">Registrazione automatica (WordPress)</h3><div class="small mut" style="margin-bottom:8px">Chiave da mettere nella costante <span class="mono">TDPANOP_HUB_KEY</span> del connettore.</div><div class="row"><input class="input mono small" readonly :value="conn.regKey" onclick="this.select()"><button class="btn sm" @click="copy(conn.regKey)">Copia</button><button class="btn sm" @click="rotateKey()">Rigenera</button></div>
                 </div>
                 <div class="card" style="margin-top:16px"><h3>Notifiche</h3><div class="row"><div class="small mut" style="flex:1">Testi, HTML, anteprime e canali si modificano nella pagina <a href="#/notifications">Notifiche</a>. SMTP e token Telegram restano nel file <span class="mono">.env</span>.</div><button class="btn sm" @click="telegramTest()">Test Telegram</button></div></div>

@@ -1516,5 +1516,19 @@
   "Rispetto al mese prima": "Rispetto al mese prima",
   "rispetto al mese prima": "rispetto al mese prima",
   "media": "media",
-  "Riusciti": "Riusciti"
+  "Riusciti": "Riusciti",
+  "Indirizzo pubblico di questo pannello": "Indirizzo pubblico di questo pannello",
+  "Il pacchetto WordPress scaricato da qui viene generato con questo indirizzo e con la chiave qui sotto: i siti nuovi si collegano da soli, senza incollare niente. Lasciandolo vuoto il pacchetto resta neutro.": "Il pacchetto WordPress scaricato da qui viene generato con questo indirizzo e con la chiave qui sotto: i siti nuovi si collegano da soli, senza incollare niente. Lasciandolo vuoto il pacchetto resta neutro.",
+  "Usa questo": "Usa questo",
+  "Indirizzo salvato: il pacchetto WordPress verrà generato con questo indirizzo": "Indirizzo salvato: il pacchetto WordPress verrà generato con questo indirizzo",
+  "Indirizzo non salvato": "Indirizzo non salvato",
+  "L'indirizzo deve iniziare con http:// o https://": "L'indirizzo deve iniziare con http:// o https://",
+  "I pacchetti installabili sono inclusi in Sentinel TD: scaricali da qui, non serve crearli. Caricane uno solo se vuoi usare una versione diversa da quella inclusa.": "I pacchetti installabili sono inclusi in Sentinel TD: scaricali da qui, non serve crearli. Caricane uno solo se vuoi usare una versione diversa da quella inclusa.",
+  "incluso in Sentinel TD": "incluso in Sentinel TD",
+  "caricato il": "caricato il",
+  "Carica una versione tua": "Carica una versione tua",
+  "Usa quello incluso": "Usa quello incluso",
+  "Torna al pacchetto incluso in Sentinel TD": "Torna al pacchetto incluso in Sentinel TD",
+  "Ora viene usato il pacchetto incluso": "Ora viene usato il pacchetto incluso",
+  "Non riuscito": "Non riuscito"
 }

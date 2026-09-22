@@ -36,7 +36,7 @@ services:
       SHOT_VIDEO_WAIT_MS: ${SHOT_VIDEO_WAIT_MS:-6000}
     volumes: [screenshots:/data/screenshots]
   api:
-    build: ./api
+    build: {context: ., dockerfile: api/Dockerfile}
     restart: unless-stopped
     env_file: .env
     environment: &app-environment
@@ -52,7 +52,7 @@ services:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
   worker:
-    build: ./api
+    build: {context: ., dockerfile: api/Dockerfile}
     restart: unless-stopped
     command: [arq, app.worker.WorkerSettings]
     env_file: .env

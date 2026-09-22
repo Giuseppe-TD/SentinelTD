@@ -18,7 +18,7 @@ function sentinel() {
     sites: [], loading: false, busy: {}, toast: '', toastTimer: null,
     detail: null, detailTab: 'overview', history: [], histSummary: null, siteHistory: [],
     sec: { summary: null, items: [], loading: false, sev: '' },
-    conn: { list: [], regKey: '', msg: '', err: '', busy: false },
+    conn: { list: [], regKey: '', hubUrl: '', hubSaved: '', msg: '', err: '', busy: false },
     brand: { logo_url: '/static/logo.png', favicon_url: '/static/favicon.png', custom_logo: false, custom_favicon: false, busy: false },
     exp: { domains: [], components: [], loadingDomains: false, loadingComponents: false },
     expiryForm: { id: null, platform: 'both', name: '', provider: '', notes: '', date: '', recur: 12, recurCustom: 0 }, expiryEdit: false, expiryErr: '',
@@ -597,8 +597,31 @@ function sentinel() {
     async resetBrand(kind) { const r = await this.api(`/api/branding/${kind}`, { method: 'DELETE' }); if (r.ok) { await this.loadBrand(); this.say(kind === 'logo' ? 'Logo predefinito ripristinato' : 'Favicon predefinita ripristinata'); } },
 
     // ---------- settings: connettori / account / telegram ----------
+    async saveHubUrl() {
+      this.conn.msg = this.conn.err = '';
+      const r = await this.api('/api/connectors/hub-url', { method: 'PUT', body: JSON.stringify({ url: this.conn.hubUrl }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { this.conn.err = d.detail || 'Indirizzo non salvato'; return; }
+      this.conn.hubUrl = this.conn.hubSaved = d.url || '';
+      this.conn.msg = 'Indirizzo salvato: il pacchetto WordPress verrà generato con questo indirizzo';
+    },
+    useCurrentHubUrl() { this.conn.hubUrl = window.location.origin; },
+    get hubDirty() { return (this.conn.hubUrl || '') !== (this.conn.hubSaved || ''); },
+
     async loadConn() {
-      try { const r = await this.api('/api/connectors'); if (r.ok) this.conn.list = await r.json(); const k = await this.api('/api/connectors/regkey'); if (k.ok) this.conn.regKey = (await k.json()).key || ''; } catch (e) { }
+      try {
+        const r = await this.api('/api/connectors'); if (r.ok) this.conn.list = await r.json();
+        const k = await this.api('/api/connectors/regkey'); if (k.ok) this.conn.regKey = (await k.json()).key || '';
+        const h = await this.api('/api/connectors/hub-url');
+        if (h.ok) { const d = await h.json(); this.conn.hubUrl = this.conn.hubSaved = d.url || ''; }
+      } catch (e) { }
+    },
+    async resetConn(kind) {
+      if (!confirm('Tornare al pacchetto incluso in Sentinel TD? Lo zip caricato verrà rimosso dall\'archivio.')) return;
+      const r = await this.api(`/api/connectors/${kind}`, { method: 'DELETE' });
+      if (!r.ok) { this.conn.err = 'Non riuscito'; return; }
+      this.conn.msg = 'Ora viene usato il pacchetto incluso';
+      await this.loadConn();
     },
     async uploadConn(kind, ev) {
       const f = ev.target.files && ev.target.files[0]; if (!f) return; this.conn.busy = true; this.conn.err = ''; this.conn.msg = '';

@@ -9,6 +9,7 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
 ![Languages](https://img.shields.io/badge/UI-EN%20%7C%20IT%20%7C%20FR%20%7C%20DE-6C63FF)
+![Licence](https://img.shields.io/badge/licence-AGPL--3.0-750014)
 
 Monitor websites, manage updates, track renewals, review security findings and receive automated notifications from one dashboard.
 
@@ -54,7 +55,13 @@ It combines website availability monitoring, CMS and extension update tracking, 
 
 The API is exposed on container port `8080` and, by default, on host port `8810` through Docker Compose.
 
-> **CMS connectors:** the WordPress and Joomla connector sources are in `connectors/`. Build the installable packages with `python scripts/build_connectors.py` — see `connectors/README.md`. The automatic-registration key is never stored in the repository: it is injected into the WordPress package only at build time.
+> **CMS connectors:** the WordPress and Joomla connectors ship with the application — their sources
+> are in `connectors/` and contain no panel address and no key. Set *Settings → Connectors → Public
+> address of this panel*, then press **Download**: Sentinel TD builds the package from those sources
+> and writes your address and registration key into the WordPress one, so new sites connect
+> themselves. Sites can also be configured by hand from their own admin page, and
+> `python scripts/build_connectors.py` builds the packages outside the panel —
+> see `connectors/README.md`.
 
 ## Requirements
 
@@ -261,8 +268,22 @@ See `SECURITY.md` and `docs/ANALYSIS.md` for additional notes.
 - `docs/ANALYSIS.md` — analysis and verification notes.
 - `SECURITY.md` — security information.
 
-## Attribution and licensing
+## Support this project
 
-Original project attribution: **Giuseppe Sciarra / Tastiere Digitali**.
+Sentinel TD is developed and maintained in the open. If it saves you time, a donation helps keep it
+going — the **Sponsor** button on this repository points to the current donation options.
 
-No project license was supplied in the source archive and no new license grant is implied by this README. Dependency and bundled asset licenses remain applicable.
+Contributions are welcome too: bug reports with clear reproduction steps, translations and
+documentation fixes are as valuable as code.
+
+## Licence
+
+Sentinel TD is free software released under the **GNU Affero General Public License v3.0 or later**
+(AGPL-3.0-or-later). You may use, study, modify and redistribute it; if you distribute a modified
+version, or run one as a network service for other people, the corresponding source must be made
+available under the same licence. The full text is in [`LICENSE`](LICENSE).
+
+The bundled connectors are covered by the same licence and are compatible with the WordPress and
+Joomla ecosystems (GPL-2.0-or-later). Dependency and bundled asset licences remain applicable.
+
+Copyright © 2026 **Giuseppe Sciarra / Tastiere Digitali**.

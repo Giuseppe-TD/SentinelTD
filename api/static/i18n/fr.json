@@ -1516,5 +1516,19 @@
   "Rispetto al mese prima": "Par rapport au mois précédent",
   "rispetto al mese prima": "par rapport au mois précédent",
   "media": "moy.",
-  "Riusciti": "Réussis"
+  "Riusciti": "Réussis",
+  "Indirizzo pubblico di questo pannello": "Adresse publique de ce panneau",
+  "Il pacchetto WordPress scaricato da qui viene generato con questo indirizzo e con la chiave qui sotto: i siti nuovi si collegano da soli, senza incollare niente. Lasciandolo vuoto il pacchetto resta neutro.": "Le paquet WordPress téléchargé ici est généré avec cette adresse et la clé ci-dessous : les nouveaux sites se connectent seuls, sans rien coller. Laissez vide pour un paquet neutre.",
+  "Usa questo": "Utiliser celle-ci",
+  "Indirizzo salvato: il pacchetto WordPress verrà generato con questo indirizzo": "Adresse enregistrée : le paquet WordPress sera généré avec cette adresse",
+  "Indirizzo non salvato": "Adresse non enregistrée",
+  "L'indirizzo deve iniziare con http:// o https://": "L’adresse doit commencer par http:// ou https://",
+  "I pacchetti installabili sono inclusi in Sentinel TD: scaricali da qui, non serve crearli. Caricane uno solo se vuoi usare una versione diversa da quella inclusa.": "Les paquets installables sont fournis avec Sentinel TD : téléchargez-les ici, rien à construire. N’en importez un que pour utiliser une version différente de celle fournie.",
+  "incluso in Sentinel TD": "fourni avec Sentinel TD",
+  "caricato il": "importé le",
+  "Carica una versione tua": "Importer votre version",
+  "Usa quello incluso": "Utiliser celui fourni",
+  "Torna al pacchetto incluso in Sentinel TD": "Revenir au paquet fourni avec Sentinel TD",
+  "Ora viene usato il pacchetto incluso": "Le paquet fourni est maintenant utilisé",
+  "Non riuscito": "Échec"
 }

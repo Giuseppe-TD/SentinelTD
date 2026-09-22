@@ -1516,5 +1516,19 @@
   "Rispetto al mese prima": "Vs previous month",
   "rispetto al mese prima": "vs previous month",
   "media": "avg",
-  "Riusciti": "Succeeded"
+  "Riusciti": "Succeeded",
+  "Indirizzo pubblico di questo pannello": "Public address of this panel",
+  "Il pacchetto WordPress scaricato da qui viene generato con questo indirizzo e con la chiave qui sotto: i siti nuovi si collegano da soli, senza incollare niente. Lasciandolo vuoto il pacchetto resta neutro.": "The WordPress package downloaded here is generated with this address and the key below, so new sites connect themselves with nothing to paste. Leave it empty to keep the package neutral.",
+  "Usa questo": "Use this one",
+  "Indirizzo salvato: il pacchetto WordPress verrà generato con questo indirizzo": "Address saved: the WordPress package will be generated with this address",
+  "Indirizzo non salvato": "Address not saved",
+  "L'indirizzo deve iniziare con http:// o https://": "The address must start with http:// or https://",
+  "I pacchetti installabili sono inclusi in Sentinel TD: scaricali da qui, non serve crearli. Caricane uno solo se vuoi usare una versione diversa da quella inclusa.": "The installable packages ship with Sentinel TD: download them here, there is nothing to build. Upload one only to use a version other than the bundled one.",
+  "incluso in Sentinel TD": "bundled with Sentinel TD",
+  "caricato il": "uploaded on",
+  "Carica una versione tua": "Upload your own version",
+  "Usa quello incluso": "Use the bundled one",
+  "Torna al pacchetto incluso in Sentinel TD": "Go back to the package bundled with Sentinel TD",
+  "Ora viene usato il pacchetto incluso": "The bundled package is now in use",
+  "Non riuscito": "Failed"
 }

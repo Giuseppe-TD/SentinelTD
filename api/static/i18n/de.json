@@ -1516,5 +1516,19 @@
   "Rispetto al mese prima": "Gegenüber Vormonat",
   "rispetto al mese prima": "gegenüber Vormonat",
   "media": "Ø",
-  "Riusciti": "Erfolgreich"
+  "Riusciti": "Erfolgreich",
+  "Indirizzo pubblico di questo pannello": "Öffentliche Adresse dieses Panels",
+  "Il pacchetto WordPress scaricato da qui viene generato con questo indirizzo e con la chiave qui sotto: i siti nuovi si collegano da soli, senza incollare niente. Lasciandolo vuoto il pacchetto resta neutro.": "Das hier heruntergeladene WordPress-Paket wird mit dieser Adresse und dem Schlüssel unten erzeugt: Neue Websites verbinden sich selbst, ohne Einfügen. Leer lassen für ein neutrales Paket.",
+  "Usa questo": "Diese verwenden",
+  "Indirizzo salvato: il pacchetto WordPress verrà generato con questo indirizzo": "Adresse gespeichert: Das WordPress-Paket wird mit dieser Adresse erzeugt",
+  "Indirizzo non salvato": "Adresse nicht gespeichert",
+  "L'indirizzo deve iniziare con http:// o https://": "Die Adresse muss mit http:// oder https:// beginnen",
+  "I pacchetti installabili sono inclusi in Sentinel TD: scaricali da qui, non serve crearli. Caricane uno solo se vuoi usare una versione diversa da quella inclusa.": "Die installierbaren Pakete sind in Sentinel TD enthalten: hier herunterladen, nichts zu erstellen. Laden Sie eines nur hoch, um eine andere als die mitgelieferte Version zu verwenden.",
+  "incluso in Sentinel TD": "in Sentinel TD enthalten",
+  "caricato il": "hochgeladen am",
+  "Carica una versione tua": "Eigene Version hochladen",
+  "Usa quello incluso": "Mitgeliefertes verwenden",
+  "Torna al pacchetto incluso in Sentinel TD": "Zurück zum mitgelieferten Paket von Sentinel TD",
+  "Ora viene usato il pacchetto incluso": "Jetzt wird das mitgelieferte Paket verwendet",
+  "Non riuscito": "Fehlgeschlagen"
 }

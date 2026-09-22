@@ -27,7 +27,7 @@ git status --short
 git add .
 git diff --cached --stat
 git diff --cached --name-only
-git commit -m "Sentinel TD 2.2.0"
+git commit -m "Sentinel TD 2.3.0"
 git remote add origin https://github.com/YOUR_ACCOUNT/YOUR_REPOSITORY.git
 git push -u origin main
 ```
@@ -50,8 +50,8 @@ Open the repository and verify that the README is displayed, the file tree is co
 For a versioned release after verification:
 
 ```sh
-git tag v2.2.0
-git push origin v2.2.0
+git tag v2.3.0
+git push origin v2.3.0
 ```
 
 Use another unused version tag if this one already exists. You can then create a GitHub Release from the tag. Do not attach archives containing your local `.env` or runtime data.

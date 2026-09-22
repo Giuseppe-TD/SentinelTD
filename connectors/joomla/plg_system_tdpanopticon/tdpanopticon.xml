@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension type="plugin" group="system" method="upgrade">
+    <name>Sentinel TD - Connettore Joomla</name>
+    <author>Tastiere Digitali</author>
+    <creationDate>2026-05</creationDate>
+    <version>1.26.0</version>
+    <description>Connettore di Sentinel TD: espone stato versioni/update via com_ajax. Legge la tabella #__updates (costo ~0). Supporta install/uninstall e attivazione estensioni da remoto (task=install|uninstall).</description>
+    <namespace path="src">TastiereDigitali\Plugin\System\Tdpanopticon</namespace>
+    <files>
+        <folder plugin="tdpanopticon">services</folder>
+        <folder>src</folder>
+    </files>
+    <config>
+        <fields name="params" addfieldprefix="TastiereDigitali\Plugin\System\Tdpanopticon\Field">
+            <fieldset name="basic">
+                <field name="token" type="tdtoken" label="Token del sito"
+                       description="Generato automaticamente. Copialo in Sentinel TD." />
+            </fieldset>
+        </fields>
+    </config>
+</extension>
