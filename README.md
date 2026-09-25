@@ -1,300 +1,227 @@
-<div align="center">
+# Sentinel TD
 
-# TiDiTalk
+**Self-hosted monitoring and maintenance for WordPress and Joomla sites** — one dashboard
+that checks your sites, applies updates, watches renewals and tells you what happened.
+Your server, your data, your branding.
 
-**Self-hosted WebRTC video meetings with scheduling, guest invitations and host-controlled rooms.**
-
-![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
-![Node.js](https://img.shields.io/badge/Node.js-22-339933?logo=node.js&logoColor=white)
-![WebRTC](https://img.shields.io/badge/WebRTC-mediasoup-333333)
-![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white)
-![Languages](https://img.shields.io/badge/UI-EN%20%7C%20IT%20%7C%20FR%20%7C%20DE-6C63FF)
-
-Private video meetings, screen sharing, scheduling and invitations on infrastructure you control.
-
-</div>
+🇮🇹 [Leggi in italiano](README.it.md)
 
 ---
 
-## Overview
+## Features
 
-TiDiTalk is a self-hosted video meeting platform built around a mediasoup WebRTC SFU.
+**Monitoring**
+- Availability checks with **confirmation before crying wolf**: an outage is announced only
+  after several failed checks, so a hiccup does not wake you up
+- Core, plugin, theme and translation versions for every site, through the included connectors
+- Visual **preview of each site**, refreshed on a schedule, with thumbnails in the list
+- Folders (clients), tags, quick filters, search and CSV export
 
-It provides host accounts, guest links, a waiting lobby, scheduled meetings, email/calendar invitations, screen sharing, chat, reactions, annotations, local recording and configurable branding without depending on a third-party meeting platform for the core service.
+**Updates**
+- Update one site, a selection or the whole fleet — manually or on a **nightly cycle**
+  that retries what failed
+- **Bulk install and remove** across many sites, guided step by step: pick the platform,
+  the package or the extension, then the target sites by folder. Removal only reaches the
+  sites that actually have that extension
+- Update history with, for every component, how many times it was updated and from which
+  version to which
 
-### Key features
+**Security and renewals**
+- Vulnerability feed matched against the extensions actually installed, with severity and
+  the version that fixes each issue
+- **Domain expiry** through RDAP with WHOIS fallback, with reminders at your own thresholds
+- Licence and subscription renewals (themes, plugins, hosting) with recurring periods and
+  a *Renewed* button that moves the date forward by one period
 
-- Host accounts and guest invitation links.
-- Waiting lobby when no host is present.
-- Audio and video meetings.
-- Screen sharing.
-- Shared annotations and drawing tools.
-- Chat and reactions.
-- Local recording.
-- Virtual backgrounds and face effects.
-- Scheduled meetings.
-- Email invitations and calendar attachments.
-- Admin and host roles.
-- User management.
-- Configurable branding and room rules.
-- English, Italian, French and German interface.
-- Localized meeting invitation emails.
+**Reports and notifications**
+- Email and Telegram messages per event, with **editable templates**, live preview and a
+  test send
+- **Monthly PDF report**, global or one per folder, sent automatically to the address you set
+- **Detailed reports on demand** (PDF or CSV) for one site, a selection or everything, over
+  any range of months, with the full history of every update
+- Statistics with daily, monthly and month-against-month views
 
-## Architecture
+**Administration**
+- Password sign-in with **TOTP** and **passkeys**
+- Branding: your logo and favicon in the panel, in the PDFs and in the emails
+- Interface in **Italian, English, French and German**
+- Connector packages built by the panel itself, already carrying your address and key
 
-| Component | Purpose |
-|---|---|
-| Node.js 22 | Application runtime |
-| Express | HTTP application server |
-| Socket.IO | Signaling and realtime events |
-| mediasoup | WebRTC SFU |
-| SQLite | Users, meetings and application settings |
-| coturn | STUN/TURN connectivity |
-| esbuild | Browser bundle build |
-
-The Docker image builds the browser mediasoup client bundle from the committed lockfile using `npm ci` and esbuild.
+---
 
 ## Requirements
 
-Deploy TiDiTalk on a **Linux Docker host** with:
+- A Linux server with **Docker** and the **Docker Compose** plugin
+- A reverse proxy with HTTPS in front of the panel (Nginx Proxy Manager, Traefik, Caddy, Nginx…)
+- Outbound internet access, to reach the monitored sites and the vulnerability feeds
+- RAM for Chromium and PDF rendering: 2 GB are comfortable for a few dozen sites
 
-- Docker Engine.
-- Docker Compose plugin.
-- A reachable public IP address.
-- HTTPS hostname.
-- Reverse proxy with WebSocket support.
-- Required WebRTC/TURN ports forwarded through the firewall/NAT.
+| Port | Protocol | What |
+|------|----------|------|
+| `HOST_PORT` (default 8810) | TCP | Web panel — behind your reverse proxy |
 
-The bundled coturn configuration uses host networking. Do not assume Docker Desktop on Windows or macOS has identical networking behavior.
+Everything else (PostgreSQL, Redis, the screenshot service) stays on the internal Docker
+network and is never exposed.
 
-## Quick start
+---
 
-Clone the repository and enter the project directory:
+## Installation
 
-```sh
-git clone <your-repository-url>
-cd videochat
-```
+```bash
+git clone https://github.com/Giuseppe-TD/sentinel-td.git
+cd sentinel-td
 
-Create the environment file:
-
-```sh
+# 1. Configuration
 cp .env.example .env
+nano .env        # at least: POSTGRES_PASSWORD, JWT_SECRET, ADMIN_PASSWORD, TZ
+
+# 2. Start
+docker compose up -d --build
+docker compose logs -f api worker
 ```
 
-Configure at least:
+Generate the secrets with:
 
-```env
-SERVER_SECRET=...
-USERS=admin:YOUR_PASSWORD:Administrator:admin
-BASE_URL=https://meet.example.com
-ANNOUNCED_IP=YOUR_PUBLIC_IP
-TURN_HOST=turn.example.com
-TURN_REALM=example.com
-TURN_USER=...
-TURN_PASSWORD=...
-TURN_EXTERNAL_IP=...
-TURN_RELAY_IP=...
-CORS_ORIGINS=https://meet.example.com
-```
-
-Generate strong random values when needed:
-
-```sh
+```bash
 docker run --rm python:3.12-slim python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-`SERVER_SECRET` should contain at least 32 characters.
+`ADMIN_PASSWORD` must be at least 12 characters: it only bootstraps the first administrator,
+after that the password lives in the database and is changed from the panel.
 
-Use a long initial administrator password without `:` or `,`, because those characters are separators in the `USERS` value.
+Then open the panel (`http://localhost:8810` for a local check) and sign in as `admin`.
 
-Start the stack:
+### Behind a reverse proxy on another machine
 
-```sh
-docker compose config --quiet
-docker compose up -d --build
-docker compose ps
+The port is bound to loopback by default. If the proxy runs elsewhere on your network:
+
+```dotenv
+BIND_ADDRESS=0.0.0.0    # then restrict port 8810 to the proxy address with a firewall
+TZ=Europe/Rome          # nightly updates, reports and month boundaries follow this zone
+DEFAULT_UI_LANGUAGE=it  # language of emails and PDFs generated by the server
 ```
 
-Check the logs:
+For passkeys, `WEBAUTHN_RP_ID` is the bare hostname and `WEBAUTHN_ORIGIN` the exact HTTPS origin:
 
-```sh
-docker compose logs --tail=100 app coturn
+```dotenv
+WEBAUTHN_RP_ID=sentinel.example.com
+WEBAUTHN_ORIGIN=https://sentinel.example.com
 ```
 
-Open the configured `BASE_URL` and sign in with the bootstrap administrator.
+---
 
-## Network and firewall
+## Connecting your sites
 
-| Traffic | Default | Routing |
-|---|---|---|
-| HTTPS / WSS | TCP 443 | Reverse proxy → application |
-| Application HTTP | TCP 3010 | Loopback by default |
-| mediasoup RTP | UDP + TCP 40000–40400 | Directly to the Docker host |
-| STUN/TURN | UDP + TCP 3478 | To coturn host |
-| TURN relay | UDP 49152–49200 | To coturn host |
+Each site talks to the panel through a small connector. **You do not build it**: the packages
+ship with the application.
 
-Keep firewall/NAT forwarding aligned with the configured port ranges.
+1. *Settings → Connectors* → set **Public address of this panel** (the **Use this one** button
+   fills in the address you are browsing from)
+2. Press **Download** next to WordPress or Joomla. The WordPress package is generated with your
+   address and registration key inside
+3. Install it on the site and activate it. On WordPress open *Settings → Sentinel TD*, pick the
+   folder and press **Connect**: the site appears in the panel, already paired
 
-HTTPS alone does not transport WebRTC media or TURN relay traffic.
+A site can also be added by hand: install the package, copy the token the connector shows and
+paste it when adding the site in the panel. The sources live in `connectors/` and are neutral —
+no address, no key — so anyone can build their own; see `connectors/README.md`.
 
-If the reverse proxy runs in another container or on another host, configure `BIND_ADDRESS` and routing deliberately. Its `localhost` is not the TiDiTalk host.
+---
 
-## Initial users
+## What goes where
 
-`USERS_MODE=create` creates missing accounts without replacing existing database users.
+| What | Where |
+|------|-------|
+| Logo, favicon, panel name | Settings → Branding |
+| Expiry thresholds, scan frequency, preview refresh, history retention | Settings |
+| Panel address and registration key for the connectors | Settings → Connectors |
+| Text, HTML and channels of every notification | Notifications |
+| Monthly report: day, recipient, content, layout | Monthly report |
+| Database credentials, SMTP, Telegram, secrets, ports | `.env` |
 
-After verifying that the administrator exists, you can clear `USERS` and manage accounts from the interface.
-
-`USERS_MODE=sync` makes `.env` authoritative at every startup; accounts managed that way are read-only in the UI.
-
-There are no built-in default accounts in a clean installation.
-
-## Email and meeting invitations
-
-Configure SMTP using:
-
-```env
-SMTP_HOST=...
-SMTP_PORT=...
-SMTP_USER=...
-SMTP_PASS=...
-SMTP_FROM=...
-```
-
-Set `SMTP_SECURE=true` when your mail server requires implicit TLS.
-
-Test SMTP delivery from Settings before relying on invitations.
-
-Meeting invitations and their attached calendar event use the language selected in the creator's browser when the meeting is created:
-
-- English
-- Italian
-- French
-- German
-
-`DEFAULT_UI_LANGUAGE` is used as the fallback for server-owned background emails such as dependency/update checks.
-
-Meeting titles, notes, names and custom branding remain exactly as entered by the user.
-
-## Interface languages
-
-TiDiTalk includes:
-
-- English
-- Italian
-- French
-- German
-
-Use the language selector in the main navigation bar. **Auto · Browser** detects the browser language and falls back to English.
-
-The selected language is stored locally in the browser.
-
-See `docs/LANGUAGES.md` for translation maintenance details.
-
-## Recording
-
-Recordings are created locally by the recording participant and downloaded to that participant's computer.
-
-They are **not** stored as server-side backups.
-
-Uploaded branding and background assets are stored in the `uploads` volume.
-
-## Keyboard shortcuts
-
-| Key | Action |
-|---|---|
-| `M` | Microphone |
-| `V` | Camera |
-| `S` | Screen sharing |
-| `D` | Drawing |
-| `H` | Raise hand |
-| `C` | Chat |
-| `U` | Participants |
-
-Drawing mode also supports pen, highlighter, arrow, rectangle, circle, laser pointer, undo and escape shortcuts.
+---
 
 ## Updates
 
-Back up first, then run:
-
-```sh
+```bash
 git pull --ff-only
 docker compose up -d --build
 docker compose ps
 ```
 
-If you update files manually via FTP, replace the changed project files and rebuild the app:
+Database migrations run by themselves at startup. If you replace files by hand instead of using
+Git, rebuild both services that share the same build context:
 
-```sh
-docker compose up -d --build app
+```bash
+docker compose up -d --build api worker
 ```
 
-Frontend files are included in the application image, so interface changes require a rebuild.
+---
 
 ## Backups
 
-Back up:
+Back up together:
 
-- `meeting_data` volume.
-- `uploads` volume.
-- Your private `.env`.
+- the PostgreSQL data (`pg_data`)
+- the `branding`, `connectors` and `screenshots` volumes
+- your private `.env`
 
-Because SQLite may use WAL mode, do not copy only a live `.db` file and ignore its WAL. Stop the application briefly for a filesystem-level backup or use SQLite's backup API.
+```bash
+docker compose exec -T postgres pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > sentinel-$(date +%F).sql
+```
 
-A normal `docker compose down` preserves named volumes.
+A plain `docker compose down` keeps the volumes. **`docker compose down -v` deletes them**, and
+with them your history and settings.
 
-`docker compose down -v` removes them.
+---
 
 ## Troubleshooting
 
-**No user can sign in**  
-Configure a valid bootstrap account in `USERS` and restart. Clean installations have no default users.
+- **A site shows as offline but it works** — open its detail page: the connector token may have
+  been regenerated on the site. Copy it again into *Edit*.
+- **Updates fail on several sites at once** — it is almost always DNS or the filesystem, not the
+  panel. `docker compose logs worker | grep "UPDATE FALLITO"` shows the real reason returned by
+  each site.
+- **No preview, or a blank rectangle where a video is** — the screenshot service needs Google
+  Chrome for H.264 background videos: `docker compose logs shooter | grep pronto` should mention
+  Chrome. Rebuild with `docker compose build shooter` if it fell back to Chromium.
+- **Emails or PDFs come out in the wrong language** — they follow `DEFAULT_UI_LANGUAGE`, not the
+  language chosen in the browser.
+- **Scheduled things happen at the wrong hour** — set `TZ` in `.env`; without it the containers
+  run in UTC.
 
-**Room opens but audio/video does not work**  
-Verify `ANNOUNCED_IP`, NAT/firewall forwarding, mediasoup ports and TURN credentials.
+---
 
-**Problems on mobile or corporate networks**  
-Test TURN reachability and determine whether the network requires TURN over TLS.
+## Documentation
 
-**Camera is blank**  
-Check browser permissions, HTTPS and whether another application is already using the device.
+- `CHANGELOG.md` — release notes
+- `SECURITY.md` — how to report a vulnerability
+- `THIRD-PARTY.md` — third-party components and their licences
+- `connectors/README.md` — the WordPress and Joomla connectors
+- `docs/LANGUAGES.md` — translation maintenance
+- `docs/PUBLISHING.md` — publishing this project on GitHub
 
-**Face effects or backgrounds fail**  
-Inspect the browser console and local `/assets/vendor/` resources.
-
-**Interface still shows the old version**  
-Rebuild the app image and hard-refresh the browser.
-
-## Security notes
-
-- Keep `.env` private.
-- Use a unique `SERVER_SECRET` and TURN credentials.
-- Serve the application over HTTPS.
-- Restrict the application port when it is intended to be reached only through a reverse proxy.
-- Configure `TRUST_PROXY` only for trusted reverse-proxy addresses.
-
-See `SECURITY.md` and `docs/ANALYSIS.md` for additional notes.
-
-## Project documentation
-
-- `docs/LANGUAGES.md` — language maintenance.
-- `docs/PUBLISHING.md` — GitHub publishing guide.
-- `docs/ANALYSIS.md` — analysis and verification notes.
-- `SECURITY.md` — security information.
-
-## Support this project
-
-TiDiTalk is developed and maintained in the open. If it saves you time, a donation helps keep it going.
-
-[**Support TiDiTalk via PayPal**](https://paypal.me/raxiel87)
-
-Contributions are welcome too: bug reports with clear reproduction steps, translations and documentation fixes are as valuable as code.
+---
 
 ## Licence
 
-TiDiTalk is free software released under the GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later). You may use, study, modify and redistribute it; if you distribute a modified version, or run one as a network service for other people, the corresponding source must be made available under the same licence. The full text is in [`LICENSE`](LICENSE).
+Sentinel TD is free software released under the
+**GNU Affero General Public License v3.0 or later** — see [LICENSE](LICENSE).
 
-Dependency and bundled asset licences remain applicable.
+In short: you can use, modify and redistribute it, including commercially. If you run a
+**modified** version as a network service for other people, you must offer its source code
+to those users.
 
-Copyright © 2026 Giuseppe Sciarra / Tastiere Digitali.
+Third-party components and their licences are listed in [THIRD-PARTY.md](THIRD-PARTY.md).
+
+Copyright © Giuseppe Sciarra — [Tastiere Digitali](https://tastieredigitali.it)
+
+---
+
+## Support the project
+
+If Sentinel TD is useful to you, you can support its development with a donation:
+
+**[paypal.me/raxiel87](https://paypal.me/raxiel87)**
+
+Bug reports and pull requests are welcome.

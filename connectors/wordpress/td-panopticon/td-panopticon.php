@@ -209,7 +209,7 @@ function tdpanop_admin_page()
                     <tr>
                         <th scope="row"><label for="tdpanop_hub_url">URL pannello</label></th>
                         <td><input type="url" id="tdpanop_hub_url" name="tdpanop_hub_url" value="<?php echo esc_attr($hub_url); ?>"
-                                placeholder="https://updateweb.tuodominio.it" style="width:420px;max-width:100%"></td>
+                                placeholder="https://sentinel.tuodominio.it" style="width:420px;max-width:100%"></td>
                     </tr>
                     <tr>
                         <th scope="row"><label for="tdpanop_hub_key">Chiave di registrazione</label></th>

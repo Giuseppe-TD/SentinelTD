@@ -1,49 +1,85 @@
 # Changelog
 
-## 2.3.0 — 2026-09-22
+## 2.4.0
 
-- Published under the **GNU AGPL-3.0** licence.
-- The connectors are neutral: no panel address and no registration key in the source.
-  Each site can be configured from its own admin page, and Sentinel TD generates a
-  ready-to-use WordPress package containing the address of *your* installation.
-- **The connector packages ship with the application**: nothing to zip and nothing to upload.
-  *Settings → Connectors* builds them from the bundled sources on request, and an uploaded zip
-  is now only an optional override that can be removed with *Use the bundled one*.
-- New setting *Settings → Connectors → Public address of this panel*, used to build the
-  WordPress package; `scripts/build_connectors.py` accepts the same values for offline builds.
+### Added
+- Daily view in statistics: day-by-day chart over 7, 30 or 90 days, with the rankings of
+  sites and components for that period and a *by day of the week* summary
+- Round-number axis, guide lines, average line, stacked succeeded/failed bars and a side
+  tooltip (sites, components, change against the previous point) in both charts
 
-## 2.2.0 — 2026-09-22
+### Changed
+- The dashboard chart now uses the same design as the statistics one
 
-- Redesigned statistics chart, detached from the period switch: round-number axis with
-  guide lines, monthly-average line, stacked succeeded/failed bars, highlighted selected
-  month, side tooltip (sites, components, change vs previous month), summary cards (total,
-  monthly average, best month, change) and 6/12/24-month buttons.
-- The download icon rendered as a stray character (the bundled Inter font has no ⬇ glyph):
-  replaced with an SVG icon on every download button.
+### Fixed
+- Language selector appearing over the toolbar buttons, or not appearing at all: it was
+  created before the application rendered its topbar. Placement is now re-evaluated on
+  every render
+- Value labels overlapping the heading of the dashboard chart
 
-## 2.1.0 — 2026-09-22
+## 2.3.0
 
-- **Detailed reports on demand** (PDF or CSV) for one site, several sites, a folder or all
-  sites, over any range of months: per component, how many times it was updated and from
-  which version to which, plus the history of every single update with date and result.
-- The monthly rollup now stores the starting version of each component, and the detailed
-  update history is kept for a configurable number of days (default 400, in *Settings*).
-- **Guided bulk install/remove**: platform, package or extension, target sites with folder
-  shortcuts and filter. Removal lists only the sites that actually have the extension and
-  never calls sites that don't; results distinguish succeeded, failed and skipped.
-- Joomla connector **1.26.0**: `file`-type extensions (e.g. language packs) can be removed;
-  Joomla core stays protected through its `protected`/`locked` flags.
-- Connector sources included in `connectors/`, with `scripts/build_connectors.py` to build
-  the installable packages without committing the registration key.
-- Fixed every select with dynamic options showing the wrong initial value.
+### Added
+- Connector packages built by the panel itself from the bundled sources: nothing to zip,
+  nothing to upload
+- Setting *Settings → Connectors → Public address of this panel*, written into the
+  generated WordPress package together with the registration key
+- `.github/FUNDING.yml` and a donation section
+
+### Changed
+- Published under the **GNU AGPL-3.0**
+- The connector sources are neutral: no panel address and no key anywhere in the repository
+- An uploaded connector zip is now only an optional override, removable with
+  *Use the bundled one*
+- `scripts/build_connectors.py` also accepts the panel address, for builds outside the panel
+
+## 2.2.0
+
+### Changed
+- Redesigned statistics chart, detached from the period switch, with summary cards
+  (total, monthly average, best month, change)
+
+### Fixed
+- The download icon rendered as a stray character: the bundled Inter font has no ⬇ glyph,
+  replaced with an SVG icon on every download button
+
+## 2.1.0
+
+### Added
+- Detailed reports on demand (PDF or CSV) for one site, several sites, a folder or all of
+  them, over any range of months: per component, how many times it was updated and from
+  which version to which, plus the history of every single update
+- Guided bulk install and remove: platform, package or extension, target sites with folder
+  shortcuts and a filter
+- Starting version stored in the monthly rollup, and a configurable retention for the
+  detailed update history (default 400 days)
+- Connector sources in `connectors/`, with `scripts/build_connectors.py`
+
+### Changed
+- Removal lists only the sites that actually have the extension, and never calls the others;
+  results distinguish succeeded, failed and skipped
+- Joomla connector 1.26.0: `file`-type extensions such as language packs can be removed,
+  while Joomla core stays protected through its `protected`/`locked` flags
+
+### Fixed
+- Selects with dynamic options showing the wrong initial value
 
 ## 2.0.0
 
-- New Sentinel TD interface: dashboard, folders, site detail with screenshot preview,
-  statistics with month-over-month comparison, monthly PDF reports per folder or global.
-- Editable email/Telegram notifications, domain and license expiry tracking with recurring
-  renewals, security feed matching.
-- Screenshot service on Google Chrome (H.264 background videos render), list thumbnails.
-- Dependency security update (python-jose, jinja2, python-multipart, weasyprint, aiosmtplib),
-  connector download protected by full authentication, rate limiting on the agent endpoints.
-- Interface in English, Italian, French and German.
+### Added
+- New Sentinel TD interface: dashboard, folders, site detail with preview, statistics with
+  month-over-month comparison, monthly PDF reports (global or per folder)
+- Editable email and Telegram notifications, domain and licence expiry tracking with
+  recurring renewals, vulnerability matching
+- Screenshot service on Google Chrome, so H.264 background videos render, with thumbnails
+- Interface in English, Italian, French and German
+
+### Changed
+- Dependencies updated after a security audit (python-jose, Jinja2, python-multipart,
+  WeasyPrint, aiosmtplib and others)
+- Connector download now requires full authentication instead of a short-lived image token
+- Rate limiting added to the endpoints used by the connectors
+
+### Fixed
+- Screenshot failures logged at info level, invisible in container logs for days
+- Settings that reported themselves as saved without being sent
